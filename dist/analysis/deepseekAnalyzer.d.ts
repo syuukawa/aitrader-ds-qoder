@@ -27,6 +27,9 @@ export declare class DeepSeekAnalyzer {
     private analyzeVolumeStatus;
     private analyzeRSIStatus;
     private getFallbackAnalysis;
+    private assessRiskLevel;
+    private calculateSupportResistance;
+    private analyzeVolumeQuality;
 }
 export {};
 //# sourceMappingURL=deepseekAnalyzer.d.ts.map

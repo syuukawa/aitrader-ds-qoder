@@ -123,18 +123,12 @@ class MarketPredictor {
     }
     async getFilteredSymbols() {
         try {
-            console.log('📊 正在获取所有交易对的24小时数据...');
+            console.log('📊 正在获取所有交易对的数据...');
             const allTickers = await this.binanceClient.getAll24hrTickers();
             console.log(`📈 共获得 ${allTickers.length} 个交易对的数据`);
-            const filteredSymbols = allTickers.filter(ticker => {
+            console.log('🔍 第1步: 根据 OI价值 > 50M 和 24h涨幅 > 5% 进行初步筛选...');
+            const candidateSymbols = allTickers.filter(ticker => {
                 if (!ticker.symbol.endsWith('USDT')) {
-                    return false;
-                }
-                if (this.excludedPairs.has(ticker.symbol)) {
-                    console.log(`⏭️  跳过已排除的交易对: ${ticker.symbol}`);
-                    return false;
-                }
-                if (ticker.quoteVolume < this.config.minVolumeThreshold) {
                     return false;
                 }
                 if (ticker.priceChangePercent < this.config.minPriceChangePercent) {
@@ -142,8 +136,42 @@ class MarketPredictor {
                 }
                 return true;
             });
-            console.log(`🎯 筛选后得到 ${filteredSymbols.length} 个符合条件的交易对`);
-            return filteredSymbols;
+            console.log(`✅ 初步筛选后得到 ${candidateSymbols.length} 个符合条件的交易对 (满足: USDT + 24h涨幅>5%)`);
+            console.log('🔍 第2步: 获取OI数据，筛选 OI价值 > 50M 的交易对...');
+            const oiMinThreshold = 50 * 1000000;
+            const filteredSymbols = [];
+            for (const ticker of candidateSymbols) {
+                try {
+                    const openInterestData = await this.binanceClient.getOpenInterestStatistics({
+                        symbol: ticker.symbol,
+                        period: '1d',
+                        limit: 1
+                    });
+                    if (openInterestData && openInterestData.length > 0) {
+                        const sumOpenInterestValue = parseFloat(openInterestData[0].sumOpenInterestValue);
+                        if (sumOpenInterestValue > oiMinThreshold) {
+                            ticker.sumOpenInterestValue = sumOpenInterestValue;
+                            filteredSymbols.push(ticker);
+                            console.log(`   ✓ ${ticker.symbol}: OI=${(sumOpenInterestValue / 1000000).toFixed(2)}M USDT, 涨幅=${ticker.priceChangePercent.toFixed(2)}%`);
+                        }
+                    }
+                }
+                catch (error) {
+                    console.warn(`   ⚠️  ${ticker.symbol}: 获取OI数据失败，跳过`);
+                    continue;
+                }
+            }
+            console.log(`🎯 OI筛选后得到 ${filteredSymbols.length} 个符合条件的交易对 (同时满足: OI>50M + 24h涨幅>5%)`);
+            console.log('🔍 第3步: 排除黑名单中的交易对...');
+            const finalFilteredSymbols = filteredSymbols.filter(ticker => {
+                if (this.excludedPairs.has(ticker.symbol)) {
+                    console.log(`   ⏭️  跳过已排除的交易对: ${ticker.symbol}`);
+                    return false;
+                }
+                return true;
+            });
+            console.log(`✅ 最终筛选后得到 ${finalFilteredSymbols.length} 个符合条件的交易对`);
+            return finalFilteredSymbols;
         }
         catch (error) {
             console.error('Error filtering symbols:', error);
@@ -159,21 +187,9 @@ class MarketPredictor {
                 console.warn(`⚠️  获取 ${symbol} 的K线数据失败`);
                 return null;
             }
-            let sumOpenInterestValue = 0;
-            try {
-                const openInterestData = await this.binanceClient.getOpenInterestStatistics({
-                    symbol,
-                    period: '1d',
-                    limit: 1
-                });
-                const date = new Date(openInterestData[0].timestamp);
-                const beijingDate = new Date(date.getTime() + 8 * 60 * 60 * 1000);
-                const beijingTime = beijingDate.toISOString().slice(0, 19).replace('T', ' ');
-                sumOpenInterestValue = parseFloat(openInterestData[0].sumOpenInterestValue);
-            }
-            catch (error) {
-            }
+            const sumOpenInterestValue = symbolData.sumOpenInterestValue || 0;
             const indicators = indicatorCalculator_1.IndicatorCalculator.calculateAllIndicators(klines);
+            const localAnalysis = this.generateLocalAnalysis(indicators);
             const predictedSymbol = {
                 symbol,
                 currentPrice: price,
@@ -181,16 +197,20 @@ class MarketPredictor {
                 priceChangePercent24h: priceChangePercent,
                 sumOpenInterestValue,
                 technicalIndicators: indicators,
+                prediction: localAnalysis.prediction,
+                confidence: localAnalysis.confidence,
                 timestamp: Date.now()
             };
             if (this.config.deepSeekEnabled && this.deepSeekApiKey) {
                 try {
                     const analysis = await this.getDeepSeekAnalysis(indicators, symbol);
-                    predictedSymbol.prediction = analysis.prediction;
-                    predictedSymbol.confidence = analysis.confidence;
+                    if (analysis.prediction) {
+                        predictedSymbol.prediction = analysis.prediction;
+                        predictedSymbol.confidence = analysis.confidence;
+                    }
                 }
                 catch (error) {
-                    console.warn(`⚠️  获取 ${symbol} 的DeepSeek分析失败:`, error);
+                    console.warn(`⚠️  获取 ${symbol} 的DeepSeek分析失败，使用本地分析:`, error);
                 }
             }
             return predictedSymbol;
@@ -231,43 +251,166 @@ class MarketPredictor {
         }
     }
     generateLocalAnalysis(indicators) {
-        let prediction = 'HOLD';
-        let confidence = 50;
         let bullishScore = 0;
         let bearishScore = 0;
-        if (indicators.macd?.histogram > 0 && indicators.macd?.macd > indicators.macd?.signal) {
-            bullishScore += 2;
+        let scoreDetails = [];
+        if (indicators.macd) {
+            const { macd, signal, histogram } = indicators.macd;
+            if (histogram > 0 && macd > signal) {
+                bullishScore += 2;
+                scoreDetails.push('MACD: 金叉看涨 (+2)');
+            }
+            else if (histogram < 0 && macd < signal) {
+                bearishScore += 2;
+                scoreDetails.push('MACD: 死叉看跌 (+2)');
+            }
+            else if (histogram > 0) {
+                bullishScore += 1;
+                scoreDetails.push('MACD: 柱状体正值 (+1)');
+            }
+            else if (histogram < 0) {
+                bearishScore += 1;
+                scoreDetails.push('MACD: 柱状体负值 (+1)');
+            }
         }
-        else if (indicators.macd?.histogram < 0 && indicators.macd?.macd < indicators.macd?.signal) {
-            bearishScore += 2;
+        if (indicators.rsi !== undefined) {
+            const rsi = indicators.rsi;
+            if (rsi >= 70) {
+                bearishScore += 1.5;
+                scoreDetails.push(`RSI: 超买区(${rsi.toFixed(1)}) (-1.5)`);
+            }
+            else if (rsi >= 60 && rsi < 70) {
+                bullishScore += 0.5;
+                scoreDetails.push(`RSI: 强势区(${rsi.toFixed(1)}) (+0.5)`);
+            }
+            else if (rsi > 50 && rsi < 60) {
+                bullishScore += 1;
+                scoreDetails.push(`RSI: 温和看多(${rsi.toFixed(1)}) (+1)`);
+            }
+            else if (rsi > 40 && rsi <= 50) {
+                bearishScore += 0.5;
+                scoreDetails.push(`RSI: 略弱(${rsi.toFixed(1)}) (-0.5)`);
+            }
+            else if (rsi > 30 && rsi <= 40) {
+                bearishScore += 1;
+                scoreDetails.push(`RSI: 温和看空(${rsi.toFixed(1)}) (-1)`);
+            }
+            else if (rsi <= 30) {
+                bullishScore += 1.5;
+                scoreDetails.push(`RSI: 超卖反弹(${rsi.toFixed(1)}) (+1.5)`);
+            }
         }
-        if (indicators.rsi >= 50 && indicators.rsi < 70) {
-            bullishScore += 1;
+        if (indicators.bollingerBands) {
+            const { position } = indicators.bollingerBands;
+            if (position === 'OVERBOUGHT') {
+                bearishScore += 1;
+                scoreDetails.push('BB: 触及上轨(-1)');
+            }
+            else if (position === 'OVERSOLD') {
+                bullishScore += 1;
+                scoreDetails.push('BB: 触及下轨(+1)');
+            }
         }
-        else if (indicators.rsi >= 70) {
-            bearishScore += 1;
+        if (indicators.ma) {
+            const { ma5, ma10, ma20, ma50 } = indicators.ma;
+            const price = indicators.currentPrice || 0;
+            if (price > ma5 && ma5 > ma10 && ma10 > ma20) {
+                bullishScore += 2;
+                scoreDetails.push('MA: 完美多头排列(+2)');
+            }
+            else if (price < ma5 && ma5 < ma10 && ma10 < ma20) {
+                bearishScore += 2;
+                scoreDetails.push('MA: 完美空头排列(-2)');
+            }
+            else if (price > ma5 && price > ma10 && price > ma20) {
+                bullishScore += 1;
+                scoreDetails.push('MA: 价格在主要均线上方(+1)');
+            }
+            else if (price < ma5 && price < ma10 && price < ma20) {
+                bearishScore += 1;
+                scoreDetails.push('MA: 价格在主要均线下方(-1)');
+            }
+            if (ma20 && ma50) {
+                if (ma20 > ma50) {
+                    bullishScore += 0.5;
+                    scoreDetails.push('MA: 中期上升趋势(+0.5)');
+                }
+                else if (ma20 < ma50) {
+                    bearishScore += 0.5;
+                    scoreDetails.push('MA: 中期下降趋势(-0.5)');
+                }
+            }
         }
-        else if (indicators.rsi < 50 && indicators.rsi > 30) {
-            bearishScore += 1;
+        if (indicators.volume) {
+            const { volumeRatio, volumeTrend } = indicators.volume;
+            if (volumeRatio > 1.5) {
+                if (indicators.macd?.histogram > 0) {
+                    bullishScore += 1.5;
+                    scoreDetails.push('VOL: 放量+上涨(+1.5)');
+                }
+                else {
+                    bearishScore += 1.5;
+                    scoreDetails.push('VOL: 放量+下跌(-1.5)');
+                }
+            }
+            else if (volumeRatio > 1.2) {
+                bullishScore += 0.5;
+                scoreDetails.push('VOL: 温和放量(+0.5)');
+            }
+            else if (volumeRatio < 0.7) {
+                bearishScore += 0.5;
+                scoreDetails.push('VOL: 成交量萎缩(-0.5)');
+            }
+            if (volumeTrend > 0.001) {
+                bullishScore += 0.5;
+                scoreDetails.push('VOL: 成交量上升趋势(+0.5)');
+            }
+            else if (volumeTrend < -0.001) {
+                bearishScore += 0.5;
+                scoreDetails.push('VOL: 成交量下降趋势(-0.5)');
+            }
         }
-        else if (indicators.rsi <= 30) {
-            bullishScore += 1;
+        let prediction = 'HOLD';
+        let confidence = 50;
+        const netScore = bullishScore - bearishScore;
+        console.log(`   💡 ${scoreDetails.join(' | ')}`);
+        console.log(`   📊 看涨分: ${bullishScore.toFixed(1)}, 看跌分: ${bearishScore.toFixed(1)}, 净分: ${netScore.toFixed(1)}`);
+        if (bullishScore >= 5) {
+            prediction = 'STRONG_BUY';
+            confidence = Math.min(95, 75 + bullishScore);
+            scoreDetails.push(`→ 信号: 强烈买入(${confidence}%)`);
         }
-        if (indicators.volume?.volumeTrend > 0) {
-            bullishScore += 1;
-        }
-        else if (indicators.volume?.volumeTrend < 0) {
-            bearishScore += 1;
-        }
-        if (bullishScore >= 3) {
+        else if (bullishScore >= 3.5) {
             prediction = 'BUY';
-            confidence = 65 + (bullishScore - 3) * 5;
+            confidence = Math.min(90, 65 + bullishScore * 2);
+            scoreDetails.push(`→ 信号: 买入(${confidence}%)`);
         }
-        else if (bearishScore >= 3) {
+        else if (bearishScore >= 5) {
+            prediction = 'STRONG_SELL';
+            confidence = Math.min(95, 75 + bearishScore);
+            scoreDetails.push(`→ 信号: 强烈卖出(${confidence}%)`);
+        }
+        else if (bearishScore >= 3.5) {
             prediction = 'SELL';
-            confidence = 60 + (bearishScore - 3) * 5;
+            confidence = Math.min(90, 65 + bearishScore * 2);
+            scoreDetails.push(`→ 信号: 卖出(${confidence}%)`);
         }
-        confidence = Math.min(100, Math.max(0, confidence));
+        else if (bullishScore > bearishScore + 1) {
+            prediction = 'BUY';
+            confidence = 50 + bullishScore * 5;
+            scoreDetails.push(`→ 信号: 买入(${confidence}%)`);
+        }
+        else if (bearishScore > bullishScore + 1) {
+            prediction = 'SELL';
+            confidence = 50 + bearishScore * 5;
+            scoreDetails.push(`→ 信号: 卖出(${confidence}%)`);
+        }
+        else {
+            prediction = 'HOLD';
+            confidence = 50 + Math.abs(netScore) * 2;
+            scoreDetails.push(`→ 信号: 持有(${confidence}%)`);
+        }
+        confidence = Math.min(100, Math.max(0, Math.round(confidence)));
         return { prediction, confidence };
     }
     extractSignalFromAnalysis(analysis) {

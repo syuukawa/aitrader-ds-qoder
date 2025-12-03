@@ -1,62 +1,69 @@
 {
-  "timestamp": 1764734744945,
-  "count": 8,
+  "timestamp": 1764763348885,
+  "count": 9,
   "symbols": [
     {
-      "symbol": "LINKUSDT",
-      "currentPrice": 13.971,
-      "signal": "BUY",
-      "confidence": 80,
-      "timestamp": 1764734462405
+      "symbol": "ADAUSDT",
+      "currentPrice": 0.4362,
+      "signal": "STRONG_SELL",
+      "confidence": 81,
+      "timestamp": 1764763348747
+    },
+    {
+      "symbol": "SUIUSDT",
+      "currentPrice": 1.7108,
+      "signal": "SELL",
+      "confidence": 72,
+      "timestamp": 1764763347919
     },
     {
       "symbol": "ENAUSDT",
-      "currentPrice": 0.2762,
-      "signal": "BUY",
-      "confidence": 70,
-      "timestamp": 1764734527782
+      "currentPrice": 0.2731,
+      "signal": "SELL",
+      "confidence": 72,
+      "timestamp": 1764763347918
+    },
+    {
+      "symbol": "AAVEUSDT",
+      "currentPrice": 192.55,
+      "signal": "SELL",
+      "confidence": 65,
+      "timestamp": 1764763348611
+    },
+    {
+      "symbol": "BCHUSDT",
+      "currentPrice": 585.97,
+      "signal": "SELL",
+      "confidence": 65,
+      "timestamp": 1764763348463
     },
     {
       "symbol": "SOLUSDT",
-      "currentPrice": 140.36,
-      "signal": "BUY",
-      "confidence": 50,
-      "timestamp": 1764734585117
+      "currentPrice": 141.56,
+      "signal": "SELL",
+      "confidence": 65,
+      "timestamp": 1764763348879
     },
     {
-      "symbol": "PARTIUSDT",
-      "currentPrice": 0.1401,
-      "signal": "BUY",
-      "confidence": 45,
-      "timestamp": 1764734528202
+      "symbol": "DOGEUSDT",
+      "currentPrice": 0.14985,
+      "signal": "SELL",
+      "confidence": 65,
+      "timestamp": 1764763347790
     },
     {
-      "symbol": "TRADOORUSDT",
-      "currentPrice": 1.573,
-      "signal": "BUY",
-      "confidence": 40,
-      "timestamp": 1764734585116
+      "symbol": "1000PEPEUSDT",
+      "currentPrice": 0.0047647,
+      "signal": "HOLD",
+      "confidence": 51,
+      "timestamp": 1764763347710
     },
     {
-      "symbol": "ANIMEUSDT",
-      "currentPrice": 0.006581,
-      "signal": "BUY",
-      "confidence": 35,
-      "timestamp": 1764734640203
-    },
-    {
-      "symbol": "HYPEUSDT",
-      "currentPrice": 34.202,
-      "signal": "BUY",
-      "confidence": 35,
-      "timestamp": 1764734462345
-    },
-    {
-      "symbol": "ALCHUSDT",
-      "currentPrice": 0.19556,
-      "signal": "BUY",
-      "confidence": 30,
-      "timestamp": 1764734462996
+      "symbol": "ASTERUSDT",
+      "currentPrice": 1.0698,
+      "signal": "HOLD",
+      "confidence": 51,
+      "timestamp": 1764763348179
     }
   ],
   "statistics": {
@@ -71,7 +78,7 @@
     "bearishRatio": "0.0",
     "marketSentiment": "中性 ⚪",
     "tradingSuggestion": "积极做空 🔴 (看涨低于30%)",
-    "total": 8,
+    "total": 9,
     "bullish": 0,
     "bearish": 0
   }

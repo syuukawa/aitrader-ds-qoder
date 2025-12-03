@@ -42,8 +42,8 @@ async function main() {
     console.log('🚀 Starting AI Trader with Market Prediction Scheduler');
     const binanceClient = new client_1.BinanceClient();
     const config = {
-        minVolumeThreshold: 100000000,
-        minPriceChangePercent: 10,
+        minVolumeThreshold: 80 * 1000000,
+        minPriceChangePercent: 9,
         klineInterval: '15m',
         klineLimit: 200,
         rsiPeriod: 14,

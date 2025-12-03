@@ -90,21 +90,16 @@ class PredictionScheduler {
                 console.log('⚠️  No symbols met the filtering criteria');
                 return;
             }
-            const buyPredictions = predictions.filter(p => p.prediction === 'BUY');
-            if (buyPredictions.length === 0) {
-                console.log('⚠️  No BUY signals found in predictions');
-                return;
-            }
-            csvExporter_1.CSVExporter.printToConsole(buyPredictions);
-            console.log('\n📊 Exporting BUY results to CSV format...');
-            csvExporter_1.CSVExporter.saveToFile(buyPredictions, './output');
-            const summary = csvExporter_1.CSVExporter.generateSummary(buyPredictions);
+            csvExporter_1.CSVExporter.printToConsole(predictions);
+            console.log('\n📊 Exporting results to CSV format...');
+            csvExporter_1.CSVExporter.saveToFile(predictions, './output');
+            const summary = csvExporter_1.CSVExporter.generateSummary(predictions);
             console.log('\n📈 Summary Statistics:');
             console.log('='.repeat(50));
             console.log(JSON.stringify(summary, null, 2));
             console.log('='.repeat(50));
             console.log('\n📋 Generating simplified market report...');
-            const summaryData = buyPredictions.map(p => ({
+            const summaryData = predictions.map(p => ({
                 symbol: p.symbol,
                 currentPrice: p.currentPrice,
                 signal: p.prediction || 'HOLD',
