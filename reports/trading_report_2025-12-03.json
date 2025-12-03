@@ -1,0 +1,78 @@
+{
+  "timestamp": 1764734744945,
+  "count": 8,
+  "symbols": [
+    {
+      "symbol": "LINKUSDT",
+      "currentPrice": 13.971,
+      "signal": "BUY",
+      "confidence": 80,
+      "timestamp": 1764734462405
+    },
+    {
+      "symbol": "ENAUSDT",
+      "currentPrice": 0.2762,
+      "signal": "BUY",
+      "confidence": 70,
+      "timestamp": 1764734527782
+    },
+    {
+      "symbol": "SOLUSDT",
+      "currentPrice": 140.36,
+      "signal": "BUY",
+      "confidence": 50,
+      "timestamp": 1764734585117
+    },
+    {
+      "symbol": "PARTIUSDT",
+      "currentPrice": 0.1401,
+      "signal": "BUY",
+      "confidence": 45,
+      "timestamp": 1764734528202
+    },
+    {
+      "symbol": "TRADOORUSDT",
+      "currentPrice": 1.573,
+      "signal": "BUY",
+      "confidence": 40,
+      "timestamp": 1764734585116
+    },
+    {
+      "symbol": "ANIMEUSDT",
+      "currentPrice": 0.006581,
+      "signal": "BUY",
+      "confidence": 35,
+      "timestamp": 1764734640203
+    },
+    {
+      "symbol": "HYPEUSDT",
+      "currentPrice": 34.202,
+      "signal": "BUY",
+      "confidence": 35,
+      "timestamp": 1764734462345
+    },
+    {
+      "symbol": "ALCHUSDT",
+      "currentPrice": 0.19556,
+      "signal": "BUY",
+      "confidence": 30,
+      "timestamp": 1764734462996
+    }
+  ],
+  "statistics": {
+    "counts": {
+      "强烈买入": 0,
+      "买入": 0,
+      "持有": 0,
+      "卖出": 0,
+      "强烈卖出": 0
+    },
+    "bullishRatio": "0.0",
+    "bearishRatio": "0.0",
+    "marketSentiment": "中性 ⚪",
+    "tradingSuggestion": "积极做空 🔴 (看涨低于30%)",
+    "total": 8,
+    "bullish": 0,
+    "bearish": 0
+  }
+}
