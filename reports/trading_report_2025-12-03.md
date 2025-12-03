@@ -1,50 +1,55 @@
 # 📊 交易对监控简要报告
 
-**生成时间**: 2025/12/3 21:17:27
-**监控数量**: 26 个交易对
+**生成时间**: 2025/12/3 21:30:26
+**监控数量**: 46 个交易对
 
 ## 📋 交易对信号列表
 
 | 序号 | 交易对 | 当前价格 | 交易信号 | 置信度 |
 |------|--------|----------|----------|--------|
-| 1 | BEATUSDT | 1.00240000 | ⚪ STRONG_BUY | 82.0% |
-| 2 | BCHUSDT | 590.35000000 | ⚪ STRONG_BUY | 82.0% |
-| 3 | PIEVERSEUSDT | 0.50860000 | ⚪ STRONG_BUY | 81.0% |
-| 4 | AAVEUSDT | 193.95000000 | ⚪ STRONG_BUY | 81.0% |
-| 5 | VIRTUALUSDT | 0.96170000 | ⚪ STRONG_BUY | 81.0% |
-| 6 | ASTERUSDT | 1.07680000 | ⚪ STRONG_BUY | 81.0% |
-| 7 | SOLUSDT | 141.86000000 | ⚪ STRONG_BUY | 81.0% |
-| 8 | AVAXUSDT | 14.15900000 | ⚪ STRONG_BUY | 81.0% |
-| 9 | ALCHUSDT | 0.20496000 | ⚪ BUY | 74.0% |
-| 10 | PENGUUSDT | 0.01161500 | ⚪ SELL | 74.0% |
-| 11 | ENAUSDT | 0.27500000 | ⚪ BUY | 74.0% |
-| 12 | 1000SHIBUSDT | 0.00898300 | ⚪ BUY | 74.0% |
-| 13 | PUMPUSDT | 0.00316300 | ⚪ SELL | 73.0% |
-| 14 | BOBUSDT | 0.02168300 | ⚪ SELL | 72.0% |
-| 15 | LIGHTUSDT | 1.62390000 | ⚪ SELL | 72.0% |
-| 16 | SUIUSDT | 1.70630000 | ⚪ SELL | 72.0% |
-| 17 | 1000PEPEUSDT | 0.00475550 | ⚪ SELL | 72.0% |
-| 18 | WIFUSDT | 0.39420000 | ⚪ SELL | 72.0% |
-| 19 | ARBUSDT | 0.21570000 | ⚪ SELL | 72.0% |
-| 20 | ADAUSDT | 0.43530000 | ⚪ SELL | 72.0% |
-| 21 | TIAUSDT | 0.61900000 | ⚪ SELL | 72.0% |
-| 22 | PARTIUSDT | 0.13169000 | ⚪ SELL | 65.0% |
-| 23 | LINAUSDT | 0.00074200 | ⚪ SELL | 58.0% |
-| 24 | TURBOUSDT | 0.00267990 | ⚪ HOLD | 52.0% |
-| 25 | 1000BONKUSDT | 0.00976500 | ⚪ HOLD | 52.0% |
-| 26 | DOGEUSDT | 0.14979000 | ⚪ HOLD | 51.0% |
-
-## 📈 信号分布统计
-
-### 信号分类统计
-- **强烈买入 🟢**: 0 个交易对
-- **买入 🟡**: 0 个交易对
-- **持有 ⚪**: 0 个交易对
-- **卖出 🟠**: 0 个交易对
-- **强烈卖出 🔴**: 0 个交易对
-
-### 市场情绪分析
-- **看涨比例**: 0.0%
-- **看跌比例**: 0.0%
-- **市场热度**: 中性 ⚪
-- **建议操作**: 积极做空 🔴 (看涨低于30%)
+| 1 | BRETTUSDT | 0.02036000 | ⚪ STRONG_BUY | 83.0% |
+| 2 | BEATUSDT | 1.01550000 | ⚪ STRONG_BUY | 83.0% |
+| 3 | ETHFIUSDT | 0.83300000 | ⚪ STRONG_BUY | 83.0% |
+| 4 | 1000SHIBUSDT | 0.00901100 | ⚪ STRONG_BUY | 82.0% |
+| 5 | VIRTUALUSDT | 0.95740000 | ⚪ STRONG_BUY | 82.0% |
+| 6 | AVAXUSDT | 14.15700000 | ⚪ STRONG_BUY | 82.0% |
+| 7 | BANANAS31USDT | 0.00404700 | ⚪ STRONG_BUY | 82.0% |
+| 8 | SKYAIUSDT | 0.02975000 | ⚪ STRONG_BUY | 81.0% |
+| 9 | PIEVERSEUSDT | 0.51450000 | ⚪ STRONG_BUY | 81.0% |
+| 10 | PARTIUSDT | 0.13315000 | ⚪ STRONG_BUY | 81.0% |
+| 11 | ENAUSDT | 0.27690000 | ⚪ STRONG_BUY | 81.0% |
+| 12 | PENGUUSDT | 0.01167600 | ⚪ STRONG_SELL | 81.0% |
+| 13 | AAVEUSDT | 193.82000000 | ⚪ STRONG_BUY | 81.0% |
+| 14 | LDOUSDT | 0.63260000 | ⚪ STRONG_BUY | 81.0% |
+| 15 | DOGEUSDT | 0.14984000 | ⚪ STRONG_SELL | 81.0% |
+| 16 | WLDUSDT | 0.63280000 | ⚪ STRONG_SELL | 81.0% |
+| 17 | BCHUSDT | 590.84000000 | ⚪ STRONG_BUY | 80.0% |
+| 18 | TIAUSDT | 0.62050000 | ⚪ STRONG_SELL | 80.0% |
+| 19 | ETHUSDT | 3090.09000000 | ⚪ STRONG_BUY | 80.0% |
+| 20 | LIGHTUSDT | 1.59330000 | ⚪ SELL | 74.0% |
+| 21 | JELLYJELLYUSDT | 0.04535000 | ⚪ BUY | 74.0% |
+| 22 | BATUSDT | 0.27790000 | ⚪ BUY | 74.0% |
+| 23 | UNIUSDT | 6.05300000 | ⚪ SELL | 74.0% |
+| 24 | B2USDT | 0.70700000 | ⚪ SELL | 73.0% |
+| 25 | WIFUSDT | 0.39460000 | ⚪ SELL | 73.0% |
+| 26 | 币安人生USDT | 0.12732000 | ⚪ SELL | 73.0% |
+| 27 | SUIUSDT | 1.71330000 | ⚪ SELL | 72.0% |
+| 28 | ARBUSDT | 0.21620000 | ⚪ SELL | 72.0% |
+| 29 | INJUSDT | 5.84400000 | ⚪ SELL | 72.0% |
+| 30 | OPUSDT | 0.32040000 | ⚪ SELL | 72.0% |
+| 31 | SOLUSDT | 141.89000000 | ⚪ SELL | 72.0% |
+| 32 | XLMUSDT | 0.25589000 | ⚪ SELL | 72.0% |
+| 33 | ALCHUSDT | 0.20378000 | ⚪ BUY | 65.0% |
+| 34 | ADAUSDT | 0.43580000 | ⚪ SELL | 65.0% |
+| 35 | ONDOUSDT | 0.50730000 | ⚪ SELL | 65.0% |
+| 36 | ASTERUSDT | 1.07440000 | ⚪ BUY | 63.0% |
+| 37 | DGBUSDT | 0.01922000 | ⚪ SELL | 58.0% |
+| 38 | LINAUSDT | 0.00074200 | ⚪ SELL | 58.0% |
+| 39 | AI16ZUSDT | 0.06168000 | ⚪ SELL | 58.0% |
+| 40 | BOBUSDT | 0.02208900 | ⚪ HOLD | 52.0% |
+| 41 | 2ZUSDT | 0.14002000 | ⚪ HOLD | 51.0% |
+| 42 | CHESSUSDT | 0.03323000 | ⚪ HOLD | 51.0% |
+| 43 | 1000PEPEUSDT | 0.00477700 | ⚪ HOLD | 51.0% |
+| 44 | 1000BONKUSDT | 0.00977500 | ⚪ HOLD | 51.0% |
+| 45 | SEIUSDT | 0.13790000 | ⚪ HOLD | 51.0% |
+| 46 | TURBOUSDT | 0.00262730 | ⚪ HOLD | 50.0% |

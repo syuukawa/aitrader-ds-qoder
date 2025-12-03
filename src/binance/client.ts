@@ -32,18 +32,18 @@ export class BinanceClient {
                 
                 // If this is the first attempt, add 2-second initial delay to ensure API readiness
                 if (i === 0) {
-                    console.log(`⏳ [Pre-delay] Waiting 2000ms before first API call to ensure readiness...`);
+                    // console.log(`⏳ [Pre-delay] Waiting 2000ms before first API call to ensure readiness...`);
                     await this.delay(2000);
                 }
 
-                console.log(`🔗 [API Call ${i + 1}/${retries}] Fetching: ${url.substring(0, 80)}...`);
+                // console.log(`🔗 [API Call ${i + 1}/${retries}] Fetching: ${url.substring(0, 80)}...`);
                 const response = await fetch(url);
                 
                 // Update last request time
                 this.lastRequestTime = Date.now();
 
                 if (response.ok) {
-                    console.log(`✅ [API Success] Response OK`);
+                    // console.log(`✅ [API Success] Response OK`);
                     return response;
                 }
 
@@ -230,7 +230,7 @@ export class BinanceClient {
         const url = `${this.baseURL}/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
 
         try {
-            console.log(`📋 [Klines] Fetching ${symbol} 15m candles (with 2s initial delay for reliability)...`);
+            // console.log(`📋 [Klines] Fetching ${symbol} 15m candles (with 2s initial delay for reliability)...`);
             // Use 5 retries with 2000ms base delay for Klines endpoint
             const response = await this.fetchWithRetry(url, 5, 2000);
             if (!response.ok) {
@@ -254,7 +254,7 @@ export class BinanceClient {
                 });
             }
 
-            console.log(`✅ [Klines] Successfully fetched ${klines.length} candles for ${symbol}`);
+            // console.log(`✅ [Klines] Successfully fetched ${klines.length} candles for ${symbol}`);
             return klines;
         } catch (error) {
             console.error(`❌ [Klines] Failed to fetch data for ${symbol}:`, error);

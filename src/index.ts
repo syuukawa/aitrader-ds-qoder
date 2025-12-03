@@ -15,8 +15,8 @@ async function main() {
   // Configuration for the market predictor
   const config = {
     // Volume filter settings
-    minVolumeThreshold: 80 * 1000000,        // 100M USDT
-    minPriceChangePercent: 9,            // 5%
+    minVolumeThreshold: 40 * 1000000,        // 40M USDT
+    minPriceChangePercent: 8,            // 5%
     
     // K-line settings
     klineInterval: '15m',

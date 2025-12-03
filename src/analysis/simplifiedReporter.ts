@@ -39,8 +39,8 @@ export class SimplifiedReporter {
         });
 
         // 添加统计部分
-        content += `\n## 📈 信号分布统计\n\n`;
-        content += this.generateStatistics(summaries);
+        // content += `\n## 📈 信号分布统计\n\n`;
+        // content += this.generateStatistics(summaries);
 
         return content;
     }

@@ -1,188 +1,328 @@
 {
-  "timestamp": 1764767847585,
-  "count": 26,
+  "timestamp": 1764768626641,
+  "count": 46,
   "symbols": [
     {
+      "symbol": "BRETTUSDT",
+      "currentPrice": 0.02036,
+      "signal": "STRONG_BUY",
+      "confidence": 83,
+      "timestamp": 1764768571558
+    },
+    {
       "symbol": "BEATUSDT",
-      "currentPrice": 1.0024,
+      "currentPrice": 1.0155,
       "signal": "STRONG_BUY",
-      "confidence": 82,
-      "timestamp": 1764767809449
+      "confidence": 83,
+      "timestamp": 1764768532813
     },
     {
-      "symbol": "BCHUSDT",
-      "currentPrice": 590.35,
+      "symbol": "ETHFIUSDT",
+      "currentPrice": 0.833,
       "signal": "STRONG_BUY",
-      "confidence": 82,
-      "timestamp": 1764767725703
-    },
-    {
-      "symbol": "PIEVERSEUSDT",
-      "currentPrice": 0.5086,
-      "signal": "STRONG_BUY",
-      "confidence": 81,
-      "timestamp": 1764767752205
-    },
-    {
-      "symbol": "AAVEUSDT",
-      "currentPrice": 193.95,
-      "signal": "STRONG_BUY",
-      "confidence": 81,
-      "timestamp": 1764767824745
-    },
-    {
-      "symbol": "VIRTUALUSDT",
-      "currentPrice": 0.9617,
-      "signal": "STRONG_BUY",
-      "confidence": 81,
-      "timestamp": 1764767733224
-    },
-    {
-      "symbol": "ASTERUSDT",
-      "currentPrice": 1.0768,
-      "signal": "STRONG_BUY",
-      "confidence": 81,
-      "timestamp": 1764767746641
-    },
-    {
-      "symbol": "SOLUSDT",
-      "currentPrice": 141.86,
-      "signal": "STRONG_BUY",
-      "confidence": 81,
-      "timestamp": 1764767757753
-    },
-    {
-      "symbol": "AVAXUSDT",
-      "currentPrice": 14.159,
-      "signal": "STRONG_BUY",
-      "confidence": 81,
-      "timestamp": 1764767754974
-    },
-    {
-      "symbol": "ALCHUSDT",
-      "currentPrice": 0.20496,
-      "signal": "BUY",
-      "confidence": 74,
-      "timestamp": 1764767743995
-    },
-    {
-      "symbol": "PENGUUSDT",
-      "currentPrice": 0.011615,
-      "signal": "SELL",
-      "confidence": 74,
-      "timestamp": 1764767832374
-    },
-    {
-      "symbol": "ENAUSDT",
-      "currentPrice": 0.275,
-      "signal": "BUY",
-      "confidence": 74,
-      "timestamp": 1764767837243
+      "confidence": 83,
+      "timestamp": 1764768568535
     },
     {
       "symbol": "1000SHIBUSDT",
-      "currentPrice": 0.008983,
-      "signal": "BUY",
-      "confidence": 74,
-      "timestamp": 1764767794276
+      "currentPrice": 0.009011,
+      "signal": "STRONG_BUY",
+      "confidence": 82,
+      "timestamp": 1764768592094
     },
     {
-      "symbol": "PUMPUSDT",
-      "currentPrice": 0.003163,
-      "signal": "SELL",
-      "confidence": 73,
-      "timestamp": 1764767844806
+      "symbol": "VIRTUALUSDT",
+      "currentPrice": 0.9574,
+      "signal": "STRONG_BUY",
+      "confidence": 82,
+      "timestamp": 1764768529999
     },
     {
-      "symbol": "BOBUSDT",
-      "currentPrice": 0.021683,
-      "signal": "SELL",
-      "confidence": 72,
-      "timestamp": 1764767847573
+      "symbol": "AVAXUSDT",
+      "currentPrice": 14.157,
+      "signal": "STRONG_BUY",
+      "confidence": 82,
+      "timestamp": 1764768626632
     },
     {
-      "symbol": "LIGHTUSDT",
-      "currentPrice": 1.6239,
-      "signal": "SELL",
-      "confidence": 72,
-      "timestamp": 1764767741048
+      "symbol": "BANANAS31USDT",
+      "currentPrice": 0.004047,
+      "signal": "STRONG_BUY",
+      "confidence": 82,
+      "timestamp": 1764768563089
     },
     {
-      "symbol": "SUIUSDT",
-      "currentPrice": 1.7063,
-      "signal": "SELL",
-      "confidence": 72,
-      "timestamp": 1764767816908
+      "symbol": "SKYAIUSDT",
+      "currentPrice": 0.02975,
+      "signal": "STRONG_BUY",
+      "confidence": 81,
+      "timestamp": 1764768551395
     },
     {
-      "symbol": "1000PEPEUSDT",
-      "currentPrice": 0.0047555,
-      "signal": "SELL",
-      "confidence": 72,
-      "timestamp": 1764767728357
-    },
-    {
-      "symbol": "WIFUSDT",
-      "currentPrice": 0.3942,
-      "signal": "SELL",
-      "confidence": 72,
-      "timestamp": 1764767827488
-    },
-    {
-      "symbol": "ARBUSDT",
-      "currentPrice": 0.2157,
-      "signal": "SELL",
-      "confidence": 72,
-      "timestamp": 1764767839960
-    },
-    {
-      "symbol": "ADAUSDT",
-      "currentPrice": 0.4353,
-      "signal": "SELL",
-      "confidence": 72,
-      "timestamp": 1764767822016
-    },
-    {
-      "symbol": "TIAUSDT",
-      "currentPrice": 0.619,
-      "signal": "SELL",
-      "confidence": 72,
-      "timestamp": 1764767806811
+      "symbol": "PIEVERSEUSDT",
+      "currentPrice": 0.5145,
+      "signal": "STRONG_BUY",
+      "confidence": 81,
+      "timestamp": 1764768621071
     },
     {
       "symbol": "PARTIUSDT",
-      "currentPrice": 0.13169,
+      "currentPrice": 0.13315,
+      "signal": "STRONG_BUY",
+      "confidence": 81,
+      "timestamp": 1764768521775
+    },
+    {
+      "symbol": "ENAUSDT",
+      "currentPrice": 0.2769,
+      "signal": "STRONG_BUY",
+      "confidence": 81,
+      "timestamp": 1764768510642
+    },
+    {
+      "symbol": "PENGUUSDT",
+      "currentPrice": 0.011676,
+      "signal": "STRONG_SELL",
+      "confidence": 81,
+      "timestamp": 1764768577607
+    },
+    {
+      "symbol": "AAVEUSDT",
+      "currentPrice": 193.82,
+      "signal": "STRONG_BUY",
+      "confidence": 81,
+      "timestamp": 1764768583401
+    },
+    {
+      "symbol": "LDOUSDT",
+      "currentPrice": 0.6326,
+      "signal": "STRONG_BUY",
+      "confidence": 81,
+      "timestamp": 1764768565806
+    },
+    {
+      "symbol": "DOGEUSDT",
+      "currentPrice": 0.14984,
+      "signal": "STRONG_SELL",
+      "confidence": 81,
+      "timestamp": 1764768623831
+    },
+    {
+      "symbol": "WLDUSDT",
+      "currentPrice": 0.6328,
+      "signal": "STRONG_SELL",
+      "confidence": 81,
+      "timestamp": 1764768615333
+    },
+    {
+      "symbol": "BCHUSDT",
+      "currentPrice": 590.84,
+      "signal": "STRONG_BUY",
+      "confidence": 80,
+      "timestamp": 1764768609723
+    },
+    {
+      "symbol": "TIAUSDT",
+      "currentPrice": 0.6205,
+      "signal": "STRONG_SELL",
+      "confidence": 80,
+      "timestamp": 1764768600753
+    },
+    {
+      "symbol": "ETHUSDT",
+      "currentPrice": 3090.09,
+      "signal": "STRONG_BUY",
+      "confidence": 80,
+      "timestamp": 1764768612560
+    },
+    {
+      "symbol": "LIGHTUSDT",
+      "currentPrice": 1.5933,
+      "signal": "SELL",
+      "confidence": 74,
+      "timestamp": 1764768498323
+    },
+    {
+      "symbol": "JELLYJELLYUSDT",
+      "currentPrice": 0.04535,
+      "signal": "BUY",
+      "confidence": 74,
+      "timestamp": 1764768527262
+    },
+    {
+      "symbol": "BATUSDT",
+      "currentPrice": 0.2779,
+      "signal": "BUY",
+      "confidence": 74,
+      "timestamp": 1764768618214
+    },
+    {
+      "symbol": "UNIUSDT",
+      "currentPrice": 6.053,
+      "signal": "SELL",
+      "confidence": 74,
+      "timestamp": 1764768574701
+    },
+    {
+      "symbol": "B2USDT",
+      "currentPrice": 0.707,
+      "signal": "SELL",
+      "confidence": 73,
+      "timestamp": 1764768501439
+    },
+    {
+      "symbol": "WIFUSDT",
+      "currentPrice": 0.3946,
+      "signal": "SELL",
+      "confidence": 73,
+      "timestamp": 1764768557219
+    },
+    {
+      "symbol": "币安人生USDT",
+      "currentPrice": 0.12732,
+      "signal": "SELL",
+      "confidence": 73,
+      "timestamp": 1764768545162
+    },
+    {
+      "symbol": "SUIUSDT",
+      "currentPrice": 1.7133,
+      "signal": "SELL",
+      "confidence": 72,
+      "timestamp": 1764768516255
+    },
+    {
+      "symbol": "ARBUSDT",
+      "currentPrice": 0.2162,
+      "signal": "SELL",
+      "confidence": 72,
+      "timestamp": 1764768606949
+    },
+    {
+      "symbol": "INJUSDT",
+      "currentPrice": 5.844,
+      "signal": "SELL",
+      "confidence": 72,
+      "timestamp": 1764768507820
+    },
+    {
+      "symbol": "OPUSDT",
+      "currentPrice": 0.3204,
+      "signal": "SELL",
+      "confidence": 72,
+      "timestamp": 1764768541942
+    },
+    {
+      "symbol": "SOLUSDT",
+      "currentPrice": 141.89,
+      "signal": "SELL",
+      "confidence": 72,
+      "timestamp": 1764768603856
+    },
+    {
+      "symbol": "XLMUSDT",
+      "currentPrice": 0.25589,
+      "signal": "SELL",
+      "confidence": 72,
+      "timestamp": 1764768524528
+    },
+    {
+      "symbol": "ALCHUSDT",
+      "currentPrice": 0.20378,
+      "signal": "BUY",
+      "confidence": 65,
+      "timestamp": 1764768548542
+    },
+    {
+      "symbol": "ADAUSDT",
+      "currentPrice": 0.4358,
       "signal": "SELL",
       "confidence": 65,
-      "timestamp": 1764767738009
+      "timestamp": 1764768539194
+    },
+    {
+      "symbol": "ONDOUSDT",
+      "currentPrice": 0.5073,
+      "signal": "SELL",
+      "confidence": 65,
+      "timestamp": 1764768536049
+    },
+    {
+      "symbol": "ASTERUSDT",
+      "currentPrice": 1.0744,
+      "signal": "BUY",
+      "confidence": 63,
+      "timestamp": 1764768597907
+    },
+    {
+      "symbol": "DGBUSDT",
+      "currentPrice": 0.01922,
+      "signal": "SELL",
+      "confidence": 58,
+      "timestamp": 1764768589296
     },
     {
       "symbol": "LINAUSDT",
       "currentPrice": 0.000742,
       "signal": "SELL",
       "confidence": 58,
-      "timestamp": 1764767797228
+      "timestamp": 1764768560361
     },
     {
-      "symbol": "TURBOUSDT",
-      "currentPrice": 0.0026799,
+      "symbol": "AI16ZUSDT",
+      "currentPrice": 0.06168,
+      "signal": "SELL",
+      "confidence": 58,
+      "timestamp": 1764768586629
+    },
+    {
+      "symbol": "BOBUSDT",
+      "currentPrice": 0.022089,
       "signal": "HOLD",
       "confidence": 52,
-      "timestamp": 1764767814263
+      "timestamp": 1764768513428
+    },
+    {
+      "symbol": "2ZUSDT",
+      "currentPrice": 0.14002,
+      "signal": "HOLD",
+      "confidence": 51,
+      "timestamp": 1764768495366
+    },
+    {
+      "symbol": "CHESSUSDT",
+      "currentPrice": 0.03323,
+      "signal": "HOLD",
+      "confidence": 51,
+      "timestamp": 1764768519015
+    },
+    {
+      "symbol": "1000PEPEUSDT",
+      "currentPrice": 0.004777,
+      "signal": "HOLD",
+      "confidence": 51,
+      "timestamp": 1764768554211
     },
     {
       "symbol": "1000BONKUSDT",
-      "currentPrice": 0.009765,
-      "signal": "HOLD",
-      "confidence": 52,
-      "timestamp": 1764767760573
-    },
-    {
-      "symbol": "DOGEUSDT",
-      "currentPrice": 0.14979,
+      "currentPrice": 0.009775,
       "signal": "HOLD",
       "confidence": 51,
-      "timestamp": 1764767749369
+      "timestamp": 1764768505036
+    },
+    {
+      "symbol": "SEIUSDT",
+      "currentPrice": 0.1379,
+      "signal": "HOLD",
+      "confidence": 51,
+      "timestamp": 1764768580671
+    },
+    {
+      "symbol": "TURBOUSDT",
+      "currentPrice": 0.0026273,
+      "signal": "HOLD",
+      "confidence": 50,
+      "timestamp": 1764768594888
     }
   ],
   "statistics": {
@@ -197,7 +337,7 @@
     "bearishRatio": "0.0",
     "marketSentiment": "中性 ⚪",
     "tradingSuggestion": "积极做空 🔴 (看涨低于30%)",
-    "total": 26,
+    "total": 46,
     "bullish": 0,
     "bearish": 0
   }
