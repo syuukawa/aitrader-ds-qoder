@@ -17,9 +17,11 @@ async function testCSVExporter() {
       timestamp: Date.now(),
       technicalIndicators: {
         macd: { macd: 0.00234, signal: 0.00189, histogram: 0.00045 },
+        macdHistory: [],
         volume: { currentVolume: 745.458, averageVolume: 800, volumeRatio: 0.93, volumeTrend: 5.2 },
         currentPrice: 87231.7,
         rsi: 65,
+        rsiHistory: [],
         ma: { ma5: 87100, ma10: 87050, ma20: 86900, ma50: 86500 },
         bollingerBands: { upper: 87500, middle: 87200, lower: 86900, bandwidth: 0.34, position: 'NORMAL' },
         priceData: { highs: [], lows: [], closes: [] }
@@ -35,9 +37,11 @@ async function testCSVExporter() {
       timestamp: Date.now(),
       technicalIndicators: {
         macd: { macd: -0.00123, signal: -0.00145, histogram: 0.00022 },
+        macdHistory: [],
         volume: { currentVolume: 450.123, averageVolume: 500, volumeRatio: 0.90, volumeTrend: -3.1 },
         currentPrice: 3245.89,
         rsi: 72,
+        rsiHistory: [],
         ma: { ma5: 3240, ma10: 3200, ma20: 3180, ma50: 3100 },
         bollingerBands: { upper: 3280, middle: 3240, lower: 3200, bandwidth: 0.25, position: 'OVERBOUGHT' },
         priceData: { highs: [], lows: [], closes: [] }
@@ -53,9 +57,11 @@ async function testCSVExporter() {
       timestamp: Date.now(),
       technicalIndicators: {
         macd: { macd: 0.00001, signal: 0.00005, histogram: -0.00004 },
+        macdHistory: [],
         volume: { currentVolume: 234.567, averageVolume: 250, volumeRatio: 0.94, volumeTrend: 1.2 },
         currentPrice: 612.34,
         rsi: 50,
+        rsiHistory: [],
         ma: { ma5: 610, ma10: 608, ma20: 605, ma50: 600 },
         bollingerBands: { upper: 620, middle: 612, lower: 604, bandwidth: 0.26, position: 'NORMAL' },
         priceData: { highs: [], lows: [], closes: [] }

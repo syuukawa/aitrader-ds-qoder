@@ -16,6 +16,7 @@ export class MarketPredictor {
     private deepSeekApiKey?: string; // DeepSeek API密钥
     private deepSeekAnalyzer?: DeepSeekAnalyzer; // DeepSeek AI分析器
     private excludedPairs: Set<string> = new Set(); // 排除的交易对集合
+    private readonly delayBetweenApiCalls: number = 300; // API\u8c03\u7528\u4e4b\u95f4\u7684\u5ef6\u8fdf (\u6beb\u79d2) - \u589e\u52a0\u4e3a300ms\u4ee5\u786e\u4fdd\u6210\u529f\u7387
 
     constructor(
         binanceClient: BinanceClient,
@@ -73,6 +74,13 @@ export class MarketPredictor {
     }
 
     /**
+     * 延迟指定毫秒数
+     */
+    private async delay(ms: number): Promise<void> {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    /**
      * 主要预测工作流:
      * 1. 从Binance获取24小时交易量数据
      * 2. 根据涨幅和成交量条件筛选交易对
@@ -105,18 +113,21 @@ export class MarketPredictor {
                 const batch = filteredSymbols.slice(i, i + batchSize);
                 console.log(`🔄 处理第 ${Math.floor(i / batchSize) + 1} 批，共 ${batch.length} 个交易对...`);
                 
-                const batchPromises = batch.map(symbolData => 
-                    this.processSymbol(symbolData)
-                );
-                
-                const batchResults = await Promise.allSettled(batchPromises);
-                
-                for (const result of batchResults) {
-                    if (result.status === 'fulfilled' && result.value) {
-                        predictedSymbols.push(result.value);
-                    } else if (result.status === 'rejected') {
-                        console.error('❌ 处理交易对出错:', result.reason);
+                // 串行处理 - 一个接一个处理，每次之間添加200ms延迟
+                for (let idx = 0; idx < batch.length; idx++) {
+                    const symbolData = batch[idx];
+                    if (idx > 0) {
+                        await this.delay(this.delayBetweenApiCalls);
                     }
+                    const result = await this.processSymbol(symbolData);
+                    if (result) {
+                        predictedSymbols.push(result);
+                    }
+                }
+                
+                // 批个前添加延迟以避免速率限制
+                if (i + batchSize < filteredSymbols.length) {
+                    await this.delay(500);
                 }
             }
             
@@ -163,45 +174,60 @@ export class MarketPredictor {
                 if (ticker.priceChangePercent < this.config.minPriceChangePercent) {
                     return false;
                 }
-                
+                if(ticker.quoteVolume < this.config.minVolumeThreshold){
+                    return false;
+                }
+                console.log(`   ✓ ${ticker.symbol}: 涨幅=${ticker.priceChangePercent.toFixed(2)}%, 24h成交量=${ticker.quoteVolume.toFixed(2)} USDT`);
                 return true;
             });
             
             console.log(`✅ 初步筛选后得到 ${candidateSymbols.length} 个符合条件的交易对 (满足: USDT + 24h涨幅>5%)`);
             
-            // 第二步: 获取OI数据并进一步筛选
-            console.log('🔍 第2步: 获取OI数据，筛选 OI价值 > 50M 的交易对...');
-            const oiMinThreshold = 50 * 1000000; // 50M USDT
-            const filteredSymbols: PriceData[] = [];
+            // 第二步: 注释掉OI数据获取（性能原因）
+            // 直接使用初步筛选的结果作为最终筛选结果
+            console.log('⏭️  跳过第2步: OI数据筛选已禁用（性能优化）');
+            const filteredSymbols: PriceData[] = candidateSymbols;
             
-            for (const ticker of candidateSymbols) {
-                try {
-                    // 获取该交易对的OI数据
-                    const openInterestData = await this.binanceClient.getOpenInterestStatistics({
-                        symbol: ticker.symbol,
-                        period: '1d',
-                        limit: 1
-                    });
-                    
-                    if (openInterestData && openInterestData.length > 0) {
-                        const sumOpenInterestValue = parseFloat(openInterestData[0].sumOpenInterestValue);
-                        
-                        // 条件1: OI价值 > 50M
-                        if (sumOpenInterestValue > oiMinThreshold) {
-                            // 将OI数据临时保存到ticker对象中（用于后续处理）
-                            (ticker as any).sumOpenInterestValue = sumOpenInterestValue;
-                            filteredSymbols.push(ticker);
-                            console.log(`   ✓ ${ticker.symbol}: OI=${(sumOpenInterestValue / 1000000).toFixed(2)}M USDT, 涨幅=${ticker.priceChangePercent.toFixed(2)}%`);
-                        }
-                    }
-                } catch (error) {
-                    console.warn(`   ⚠️  ${ticker.symbol}: 获取OI数据失败，跳过`);
-                    // 获取OI失败则跳过该交易对
-                    continue;
-                }
-            }
+            // ========== 原始OI筛选逻辑（已注释）==========
+            // console.log('🔍 第2步: 获取OI数据，筛选 OI价值 > 50M 的交易对...');
+            // const oiMinThreshold = 50 * 1000000; // 50M USDT
+            // const filteredSymbols: PriceData[] = [];
+            // 
+            // for (let idx = 0; idx < candidateSymbols.length; idx++) {
+            //     const ticker = candidateSymbols[idx];
+            //     try {
+            //         // 添加延迟以避免速率限制 - 增加为500ms以确保成功率
+            //         if (idx > 0) {
+            //             await this.delay(500);
+            //         }
+            //         
+            //         // 获取该交易对的OI数据
+            //         const openInterestData = await this.binanceClient.getOpenInterestStatistics({
+            //             symbol: ticker.symbol,
+            //             period: '1d',
+            //             limit: 1
+            //         });
+            //         
+            //         if (openInterestData && openInterestData.length > 0) {
+            //             const sumOpenInterestValue = parseFloat(openInterestData[0].sumOpenInterestValue);
+            //             
+            //             // 条件1: OI价值 > 50M
+            //             if (sumOpenInterestValue > oiMinThreshold) {
+            //                 // 将OI数据临时保存到ticker对象中（用于后续处理）
+            //                 (ticker as any).sumOpenInterestValue = sumOpenInterestValue;
+            //                 filteredSymbols.push(ticker);
+            //                 console.log(`   ✓ ${ticker.symbol}: OI=${(sumOpenInterestValue / 1000000).toFixed(2)}M USDT, 涨幅=${ticker.priceChangePercent.toFixed(2)}%`);
+            //             }
+            //         }
+            //     } catch (error) {
+            //         console.warn(`   ⚠️  ${ticker.symbol}: 获取OI数据失败，跳过`);
+            //         // 获取OI失败则跳过该交易对
+            //         continue;
+            //     }
+            // }
+            // ========== 原始OI筛选逻辑END ==========
             
-            console.log(`🎯 OI筛选后得到 ${filteredSymbols.length} 个符合条件的交易对 (同时满足: OI>50M + 24h涨幅>5%)`);
+            console.log(`🎯 筛选后得到 ${filteredSymbols.length} 个符合条件的交易对 (满足: 24h涨幅>5%，OI筛选已禁用)`);
             
             // 第三步: 排除黑名单中的交易对
             console.log('🔍 第3步: 排除黑名单中的交易对...');
@@ -223,7 +249,7 @@ export class MarketPredictor {
 
     /**
      * 处理单个交易对: 获取K线数据并计算技术指标
-     * 注意: OI数据已在getFilteredSymbols中获取，不需要重复获取
+     * 注意: OI数据获取已禁用（性能优化），sumOpenInterestValue默认为0
      */
     private async processSymbol(symbolData: PriceData): Promise<PredictedSymbol | null> {
         try {
@@ -340,46 +366,101 @@ export class MarketPredictor {
         let bearishScore = 0;
         let scoreDetails: string[] = [];
 
-        // ========== MACD 分析 (权重: 2) ==========
-        if (indicators.macd) {
+        // ========== MACD 分析 (权重: 2) - 增强动能检测 ==========
+        if (indicators.macd && indicators.macdHistory && indicators.macdHistory.length >= 2) {
             const { macd, signal, histogram } = indicators.macd;
+            const prevHistogram = indicators.macdHistory[indicators.macdHistory.length - 2]?.histogram || histogram;
+            
+            let macdScore = 0;
+            
+            // 基础信号
             if (histogram > 0 && macd > signal) {
-                bullishScore += 2;
-                scoreDetails.push('MACD: 金叉看涨 (+2)');
+                macdScore += 2;  // 金叉
             } else if (histogram < 0 && macd < signal) {
-                bearishScore += 2;
-                scoreDetails.push('MACD: 死叉看跌 (+2)');
+                macdScore -= 2;  // 死叉
             } else if (histogram > 0) {
-                bullishScore += 1;
-                scoreDetails.push('MACD: 柱状体正值 (+1)');
+                macdScore += 1;  // 柱状体正值
             } else if (histogram < 0) {
-                bearishScore += 1;
-                scoreDetails.push('MACD: 柱状体负值 (+1)');
+                macdScore -= 1;  // 柱状体负值
             }
+            
+            // 🔴 关键优化: 动能加速度检测
+            if (histogram > prevHistogram && histogram > 0) {
+                macdScore += 1.5;  // 加速！最强信号
+                scoreDetails.push('MACD: 动能加速 🚀 (+1.5)');
+            } else if (histogram < prevHistogram && histogram > 0) {
+                macdScore -= 0.5;  // 减速，警告
+                scoreDetails.push('MACD: 动能减速 ⚠️ (-0.5)');
+            }
+            
+            // 0轴穿越确认
+            const prevMacd = indicators.macdHistory[indicators.macdHistory.length - 2] || indicators.macd;
+            if (macd > 0 && prevMacd.macd < 0) {
+                macdScore += 1.5;  // 正穿0轴，强势
+                scoreDetails.push('MACD: 正穿0轴 ✅ (+1.5)');
+            } else if (macd < 0 && prevMacd.macd > 0) {
+                macdScore -= 1.5;  // 负穿0轴，弱势
+                scoreDetails.push('MACD: 负穿0轴 ❌ (-1.5)');
+            }
+            
+            bullishScore += Math.max(0, macdScore);
+            if (macdScore < 0) bearishScore += Math.abs(macdScore);
         }
 
-        // ========== RSI 分析 (权重: 1.5) ==========
-        if (indicators.rsi !== undefined) {
+        // ========== RSI 分析 (权重: 1.5) - 增强背离检测 ==========
+        if (indicators.rsi !== undefined && indicators.rsiHistory && indicators.rsiHistory.length >= 5) {
             const rsi = indicators.rsi;
+            const recentRSI = indicators.rsiHistory.slice(-5);
+            const prices = indicators.priceData?.closes?.slice(-5) || [];
+            
+            let rsiScore = 0;
+            
+            // 基础RSI评分
             if (rsi >= 70) {
-                bearishScore += 1.5;
+                rsiScore -= 1.5;  // 超买
                 scoreDetails.push(`RSI: 超买区(${rsi.toFixed(1)}) (-1.5)`);
             } else if (rsi >= 60 && rsi < 70) {
-                bullishScore += 0.5;
+                rsiScore += 0.5;  // 强势
                 scoreDetails.push(`RSI: 强势区(${rsi.toFixed(1)}) (+0.5)`);
             } else if (rsi > 50 && rsi < 60) {
-                bullishScore += 1;
+                rsiScore += 1;  // 温和看多
                 scoreDetails.push(`RSI: 温和看多(${rsi.toFixed(1)}) (+1)`);
             } else if (rsi > 40 && rsi <= 50) {
-                bearishScore += 0.5;
+                rsiScore -= 0.5;  // 略弱
                 scoreDetails.push(`RSI: 略弱(${rsi.toFixed(1)}) (-0.5)`);
             } else if (rsi > 30 && rsi <= 40) {
-                bearishScore += 1;
+                rsiScore -= 1;  // 温和看空
                 scoreDetails.push(`RSI: 温和看空(${rsi.toFixed(1)}) (-1)`);
             } else if (rsi <= 30) {
-                bullishScore += 1.5;
+                rsiScore += 1.5;  // 超卖反弹
                 scoreDetails.push(`RSI: 超卖反弹(${rsi.toFixed(1)}) (+1.5)`);
             }
+            
+            // 🔴 关键优化: RSI背离检测（最可靠的反转信号）
+            if (prices.length >= 5 && recentRSI.length >= 5) {
+                const minPrice = Math.min(...prices);
+                const maxPrice = Math.max(...prices);
+                const minRSI = Math.min(...recentRSI);
+                const maxRSI = Math.max(...recentRSI);
+                
+                const currentPrice = prices[prices.length - 1];
+                const currentRSI = recentRSI[recentRSI.length - 1];
+                
+                // 看涨背离: 价格创新低，RSI反而上升
+                if (currentPrice < minPrice && currentRSI > minRSI) {
+                    rsiScore += 2;  // 非常强的看涨信号
+                    scoreDetails.push('RSI背离: 价格新低+RSI上升 🟢 (+2)');
+                }
+                
+                // 看跌背离: 价格创新高，RSI反而下降
+                if (currentPrice > maxPrice && currentRSI < maxRSI) {
+                    rsiScore -= 2;  // 非常强的看跌信号
+                    scoreDetails.push('RSI背离: 价格新高+RSI下降 🔴 (-2)');
+                }
+            }
+            
+            bullishScore += Math.max(0, rsiScore);
+            if (rsiScore < 0) bearishScore += Math.abs(rsiScore);
         }
 
         // ========== 布林带分析 (权重: 1) ==========
@@ -543,5 +624,74 @@ export class MarketPredictor {
         const baseConfidence = 60;
         const adjustment = (strongIndicators - weakIndicators) * 5;
         return Math.min(100, Math.max(0, baseConfidence + adjustment));
+    }
+
+    /**
+     * 计算ATR（平均真实波幅） - 用于动态止损
+     */
+    private calculateATR(priceData: any): number {
+        if (!priceData?.highs || !priceData?.lows || !priceData?.closes) return 0;
+
+        const trueRanges: number[] = [];
+        const len = Math.min(priceData.highs.length, priceData.lows.length, priceData.closes.length);
+
+        for (let i = 1; i < len; i++) {
+            const tr = Math.max(
+                priceData.highs[i] - priceData.lows[i],
+                Math.abs(priceData.highs[i] - priceData.closes[i - 1]),
+                Math.abs(priceData.lows[i] - priceData.closes[i - 1])
+            );
+            trueRanges.push(tr);
+        }
+
+        // 返回最近14根的ATR
+        if (trueRanges.length === 0) return 0;
+        const recent = trueRanges.slice(-14);
+        return recent.reduce((a, b) => a + b, 0) / recent.length;
+    }
+
+    /**
+     * 计算动态止损价格
+     * 基于ATR动态计算，而不是固定点数
+     */
+    private calculateDynamicStopLoss(indicators: any, direction: 'buy' | 'sell'): {
+        stopLossPrice: number;
+        stopLossPercent: number;
+    } {
+        const currentPrice = indicators.currentPrice || 0;
+        const atr = this.calculateATR(indicators.priceData);
+
+        let stopLossPrice: number;
+        if (direction === 'buy') {
+            // 做多：止损在下方
+            stopLossPrice = currentPrice - (atr * 1.5);
+        } else {
+            // 做空：止损在上方
+            stopLossPrice = currentPrice + (atr * 1.5);
+        }
+
+        const stopLossPercent = Math.abs((stopLossPrice - currentPrice) / currentPrice) * 100;
+
+        return {
+            stopLossPrice: Math.max(0, stopLossPrice),
+            stopLossPercent
+        };
+    }
+
+    /**
+     * 计算风险回报比 (Risk:Reward Ratio)
+     */
+    private calculateRiskRewardRatio(
+        entryPrice: number,
+        stopLossPrice: number,
+        targetPrice: number
+    ): number {
+        if (entryPrice <= 0 || stopLossPrice <= 0 || targetPrice <= 0) return 0;
+
+        const risk = Math.abs(entryPrice - stopLossPrice);
+        const reward = Math.abs(targetPrice - entryPrice);
+
+        if (risk === 0) return 0;
+        return reward / risk;
     }
 }

@@ -97,10 +97,38 @@ export class DeepSeekAnalyzer {
     }
 
     /**
-     * 调用DeepSeek API进行详细分析
+     * 切换为短线交易模式的分析
+     * 使用优化的短线Prompt，聚焦于15分钟快速操作
      */
-    private async generateDetailedAnalysis(indicators: IndicatorAnalysis, symbol: string): Promise<string> {
-        const prompt = this.buildAnalysisPrompt(indicators, symbol);
+    async analyzeTrendShortline(indicators: IndicatorAnalysis, symbol: string): Promise<{
+        summary: string;
+        analysis: string;
+        fullReport: string;
+    }> {
+        try {
+            const summary = this.generateSummaryOutput(symbol, indicators);
+            // 使用短线专用模式
+            const analysis = await this.generateDetailedAnalysis(indicators, symbol, true);
+            const fullReport = summary + '\n\n' + analysis;
+
+            return {
+                summary,
+                analysis,
+                fullReport
+            };
+        } catch (error) {
+            console.error(`❌ DeepSeek短线分析失败 (${symbol}):`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * 生成详细分析 - 支持短线和通用模式
+     */
+    private async generateDetailedAnalysis(indicators: IndicatorAnalysis, symbol: string, shortlineMode: boolean = false): Promise<string> {
+        const prompt = shortlineMode 
+            ? this.buildShortlineTradingPrompt(indicators, symbol)
+            : this.buildAnalysisPrompt(indicators, symbol);
 
         // 是否输出Prompt用于调试
         if (process.env.DEEPSEEK_PROMPT_LOG === 'true') {
@@ -285,6 +313,274 @@ ${supportResistance}
     }
 
     /**
+     * 构建短线交易专用Prompt（15分钟K线优化版）
+     * 相比通用版本，更聚焦于短线操作的具体细节
+     */
+    private buildShortlineTradingPrompt(indicators: IndicatorAnalysis, symbol: string): string {
+        const { macd, volume, currentPrice, rsi, ma, bollingerBands, priceData } = indicators;
+
+        // 关键位置计算
+        const ma5Distance = currentPrice - (ma?.ma5 || 0);
+        const ma20Distance = currentPrice - (ma?.ma20 || 0);
+        const bbUpperDistance = (bollingerBands?.upper || 0) - currentPrice;
+        const bbLowerDistance = currentPrice - (bollingerBands?.lower || 0);
+
+        const ma5DistancePercent = ((ma5Distance / currentPrice) * 100).toFixed(2);
+        const ma20DistancePercent = ((ma20Distance / currentPrice) * 100).toFixed(2);
+        const bbUpperPercent = ((bbUpperDistance / currentPrice) * 100).toFixed(2);
+        const bbLowerPercent = ((bbLowerDistance / currentPrice) * 100).toFixed(2);
+
+        // 波动率评估
+        const volatility = this.calculateVolatility(priceData);
+        const avgTrueRange = this.calculateATR(priceData);
+        const dynamicStopLossPercent = ((avgTrueRange / currentPrice) * 100).toFixed(2);
+
+        return `
+## 🎯 短线交易实战分析 (15分钟K线)
+
+**品种**: ${symbol}
+**当前价格**: $${currentPrice.toFixed(8)}
+**分析时间**: 北京时间
+**持仓目标**: 5-30分钟快速操作
+
+---
+
+### 📊 市场现状评估
+
+#### 1️⃣ 趋势方向确认 (MA系统)
+
+**短期趋势** (MA5, MA10, MA20):
+- MA5: $${ma?.ma5?.toFixed(8) || 'N/A'}
+- MA10: $${ma?.ma10?.toFixed(8) || 'N/A'}
+- MA20: $${ma?.ma20?.toFixed(8) || 'N/A'}
+- MA50: $${ma?.ma50?.toFixed(8) || 'N/A'}
+
+**价格位置**:
+- 距MA5: ${ma5DistancePercent}% ${parseFloat(ma5DistancePercent) > 0 ? '(上方,看多)' : '(下方,看空)'}
+- 距MA20: ${ma20DistancePercent}% ${parseFloat(ma20DistancePercent) > 0 ? '(上方,看多)' : '(下方,看空)'}
+
+${this.analyzeMAArrangement(currentPrice, ma)}
+
+---
+
+#### 2️⃣ 动能强度 (MACD系统) - 最关键
+
+**MACD数值**:
+- MACD线: ${macd?.macd?.toFixed(8) || 'N/A'}
+- 信号线: ${macd?.signal?.toFixed(8) || 'N/A'}
+- 柱状体: ${macd?.histogram?.toFixed(8) || 'N/A'}
+
+${this.analyzeMACDStatus(macd)}
+
+**关键判断**: MACD柱子是否在加速? MACD是否即将反转? 是否穿过0轴?
+
+---
+
+#### 3️⃣ 超买超卖程度 (RSI)
+
+**RSI值**: ${rsi?.toFixed(2) || 'N/A'}
+
+${this.analyzeRSIStatus(rsi)}
+
+---
+
+#### 4️⃣ 波动率与支撑阻力 (布林带)
+
+**布林带参数**:
+- 上轨(阻力): $${bollingerBands?.upper?.toFixed(8) || 'N/A'} (上方 ${bbUpperPercent}%)
+- 中轨(趋势): $${bollingerBands?.middle?.toFixed(8) || 'N/A'}
+- 下轨(支撑): $${bollingerBands?.lower?.toFixed(8) || 'N/A'} (下方 ${bbLowerPercent}%)
+- 带宽: ${bollingerBands?.bandwidth?.toFixed(2) || 'N/A'}%
+
+${this.analyzeBollingerStatus(currentPrice, bollingerBands)}
+
+---
+
+#### 5️⃣ 市场热度 (成交量)
+
+**成交量数据**:
+- 当前成交量: ${volume?.currentVolume?.toFixed(2) || 'N/A'}
+- 近期平均: ${volume?.averageVolume?.toFixed(2) || 'N/A'}
+- 成交量比率: ${volume?.volumeRatio?.toFixed(2) || 'N/A'}x
+- 成交量趋势: ${volume?.volumeTrend?.toFixed(6) || 'N/A'}
+
+${this.analyzeVolumeStatus(volume)}
+
+${macd?.histogram > 0 && (volume?.volumeRatio || 0) > 1.2 ? '**✅ 上升放量 - 强势确认!**' : ''}
+${macd?.histogram < 0 && (volume?.volumeRatio || 0) > 1.2 ? '**⚠️ 下跌放量 - 有抛售压力!**' : ''}
+
+---
+
+### 🎬 短线进场信号分析
+
+#### ✅ 多头进场检查清单
+
+请评估以下条件是否满足：
+- MA系统: 价格 > MA5 > MA10 > MA20
+- MACD: 在0轴上方，柱子正值且加速
+- RSI: 50-70区间或刚穿越50向上
+- 成交量: 放量 (>1.2x) 配合价格上升
+- K线形态: 底部反弹或缩量后放量突破
+
+**信号评分**: ___/5 (请评估满足条件的个数)
+- 5/5 = 🟢 极强烈买入 (概率70%+)
+- 4/5 = 🟡 强买入 (概率60-70%)
+- 3/5 = 🟠 可参与 (概率50-60%)
+- <3/5 = 🔴 信号不足，建议观望
+
+---
+
+### 💰 精确的进出场计划
+
+#### 📍 推荐进场方案
+
+**进场点位**:
+1. 即刻进场价: $${currentPrice.toFixed(8)}
+2. 理想回调进场: $${(currentPrice * 0.998).toFixed(8)} (下跌0.2%)
+3. 最后上车点: $${(currentPrice * 1.002).toFixed(8)} (上升0.2%)
+
+${volume?.volumeRatio > 1.5 ? '**进场方式**: 100% 一次性上车 (放量驱动，机会明确)' : volume?.volumeRatio > 1.2 ? '**进场方式**: 60% 首批上车，等回调加30% (温和放量)' : '**进场方式**: 50% 首批上车，等确认加50% (谨慎参与)'}
+
+---
+
+#### 🛑 精确止损计划 (最关键!)
+
+**止损的核心原则**: 不能用固定点数，必须用技术位 + 波动率调整
+
+**方案A - 激进止损** (用于强势信号 >= 4/5)
+- 止损位: $${(ma?.ma5 || currentPrice * 0.99).toFixed(8)} (MA5下方)
+- 止损幅度: ${((currentPrice - (ma?.ma5 || currentPrice * 0.99)) / currentPrice * 100).toFixed(2)}%
+- 适用: MACD金叉+放量+RSI 50-70
+
+**方案B - 保守止损** (用于一般信号 3/5)
+- 止损位: $${(ma?.ma20 || currentPrice * 0.98).toFixed(8)} (MA20下方 1-2%)
+- 止损幅度: ${((currentPrice - (ma?.ma20 || currentPrice * 0.98)) / currentPrice * 100).toFixed(2)}%
+- 适用: 信号混合，需要更多安全边际
+
+**方案C - 绝对止损** (用于高风险信号 <3/5)
+- 止损位: $${(currentPrice * 0.97).toFixed(8)} (价格下方3%)
+- 止损幅度: 3%
+- 适用: 只有部分信号满足
+
+**选择建议**: 根据上面的信号评分选择合适的方案
+
+---
+
+#### ✅ 分阶段止盈计划
+
+**第一止盈目标** (锁定快速利润):
+- 目标价位: $${(currentPrice * 1.005).toFixed(8)} (上升 0.5%)
+- 动作: 卖出 40% 头寸
+- 理由: 快速锁定利润，降低风险
+
+**第二止盈目标** (跟踪趋势):
+- 目标价位: $${(currentPrice * 1.01).toFixed(8)} (上升 1.0%)
+- 动作: 卖出 30% 头寸，剩余设追踪止损
+- 理由: 继续参与趋势，保护利润
+
+**第三止盈目标** (趋势延续):
+- 目标价位: $${(currentPrice * 1.015).toFixed(8)} (上升 1.5%)
+- 动作: 卖出全部剩余头寸
+- 理由: 短线到此为止，不贪
+
+---
+
+#### 📊 风险回报比计算
+
+| 指标 | 数值 |
+|------|------|
+| 入场价 | $${currentPrice.toFixed(8)} |
+| 止损价 (方案B) | $${(ma?.ma20 || currentPrice * 0.98).toFixed(8)} |
+| 风险空间 | $${(currentPrice - (ma?.ma20 || currentPrice * 0.98)).toFixed(2)} |
+| 第一目标 | $${(currentPrice * 1.005).toFixed(8)} |
+| 利润空间1 | $${((currentPrice * 1.005) - currentPrice).toFixed(2)} |
+| R:R 比1 | ${(((currentPrice * 1.005) - currentPrice) / (currentPrice - (ma?.ma20 || currentPrice * 0.98))).toFixed(2)}:1 |
+
+**可交易性判断**: 
+${(((currentPrice * 1.01) - currentPrice) / (currentPrice - (ma?.ma20 || currentPrice * 0.98))) >= 1.5 ? '✅ R:R >= 1.5:1，符合短线标准，可以交易' : '⚠️ R:R < 1.5:1，风险回报不够好，建议等待'}
+
+---
+
+### ⚠️ 风险警告与立即平仓条件
+
+**必须立即平仓的条件** (不管多看好):
+
+1️⃣ **技术破位**
+   - 如果 MA5 被击穿 + 跌破1根K线范围 → 立即全部平仓
+
+2️⃣ **MACD反转**
+   - 如果 MACD 柱子从扩大变为缩小 3根 → 警告，准备退出
+   - 如果 MACD 负穿 0轴 → 立即平仓
+
+3️⃣ **成交量异常**
+   - 如果价格下跌伴随放量(>1.5x) → 立即全部平仓
+
+4️⃣ **时间止损**
+   - 如果已持仓 15 分钟，还没有明确方向 → 平仓休息
+   - 如果已持仓 30 分钟，已获利但可能反转 → 全部出场
+
+---
+
+### 📋 最终操作建议 (三句话核心)
+
+**1. 现在做什么**:
+${currentPrice > (ma?.ma5 || 0) && macd?.histogram > 0 && rsi > 50 ? '[BUY]' : currentPrice < (ma?.ma5 || 0) && macd?.histogram < 0 && rsi < 50 ? '[SELL]' : '[WAIT]'} 进场点位: $${currentPrice.toFixed(8)}
+理由: [2-3 个最关键的信号]
+
+**2. 止损在哪**:
+价格: $${(ma?.ma20 || currentPrice * 0.98).toFixed(8)}
+原因: [基于哪个技术位]
+风险: ${((currentPrice - (ma?.ma20 || currentPrice * 0.98)) / currentPrice * 100).toFixed(2)}%
+
+**3. 目标是哪**:
+第一: $${(currentPrice * 1.005).toFixed(8)}
+第二: $${(currentPrice * 1.01).toFixed(8)}
+第三: $${(currentPrice * 1.015).toFixed(8)}
+
+---
+
+**本次分析的信心水平**:
+- 信号一致性: ___/5
+- 建议参与等级: ${(volume?.volumeRatio >= 1.2 && macd?.histogram > 0 && rsi > 50) ? '🟢 高概率 (可参与)' : (volume?.volumeRatio >= 1.2 && macd?.histogram > 0) ? '🟡 中等 (谨慎)' : '🔴 低概率 (观望)'}
+
+**最终结论**: ${volume?.volumeRatio >= 1.2 && macd?.histogram > 0 && rsi > 50 ? '✅ 信号良好，可以参与' : '⚠️ 信号不够强，建议观望'}
+        `;
+    }
+
+    /**
+     * 计算波动率
+     */
+    private calculateVolatility(priceData: any): number {
+        if (!priceData?.closes || priceData.closes.length < 20) return 0;
+        const closes = priceData.closes.slice(-20);
+        const avg = closes.reduce((a: number, b: number) => a + b) / closes.length;
+        const variance = closes.reduce((sum: number, price: number) => sum + Math.pow(price - avg, 2), 0) / closes.length;
+        return Math.sqrt(variance);
+    }
+
+    /**
+     * 计算ATR(平均真实波幅)
+     */
+    private calculateATR(priceData: any): number {
+        if (!priceData?.highs || !priceData?.lows || !priceData?.closes) return 0;
+        const trueRanges: number[] = [];
+        const len = Math.min(priceData.highs.length, priceData.lows.length, priceData.closes.length);
+
+        for (let i = 1; i < len; i++) {
+            const tr = Math.max(
+                priceData.highs[i] - priceData.lows[i],
+                Math.abs(priceData.highs[i] - priceData.closes[i - 1]),
+                Math.abs(priceData.lows[i] - priceData.closes[i - 1])
+            );
+            trueRanges.push(tr);
+        }
+
+        if (trueRanges.length === 0) return 0;
+        const recent = trueRanges.slice(-14);
+        return recent.reduce((a: number, b: number) => a + b, 0) / recent.length;
+    }
+
+    /**
      * 生成简化的交易信号
      */
     private generateSimpleSignal(indicators: IndicatorAnalysis): TradingSignalType {
@@ -344,8 +640,7 @@ ${supportResistance}
         if (!macd) return '';
         const status = macd.macd > macd.signal ? '🟢 看涨金叉' : macd.macd < macd.signal ? '🔴 看跌死叉' : '⚪ 中性整理';
         const trend = macd.histogram > 0 ? '🟢 多头动能增强' : '🔴 空头动能增强';
-        return `**当前状态**: ${status}
-**柱状图趋势**: ${trend}`;
+        return `**当前状态**: ${status}\n**柱状图趋势**: ${trend}`;
     }
 
     /**

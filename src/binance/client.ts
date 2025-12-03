@@ -12,32 +12,132 @@ const dispatcher = new ProxyAgent("http://127.0.0.1:7890");
 setGlobalDispatcher(dispatcher);
 
 export class BinanceClient {
-    private readonly maxRetries: number = 5;
-    private readonly baseRetryDelay: number = 1000;
-    private readonly rateLimitRetryDelay: number = 60000; // 1 minute for rate limiting
+    private readonly maxRetries: number = 5;  // More retries for reliability
+    private readonly baseRetryDelay: number = 2000;  // Start with 2 seconds (user request)
+    private readonly maxRetryDelay: number = 60000;  // Cap at 60 seconds for max safety
     private baseURL = 'https://fapi.binance.com';
+    private lastRequestTime: number = 0;
+    private minRequestInterval: number = 500;  // 500ms between requests for safety
+    private requestQueue: Array<() => Promise<any>> = [];
+    private isProcessingQueue: boolean = false;
 
     /**
-     * Fetch data with retry mechanism
+     * Fetch data with retry mechanism and rate limiting
      */
-    async fetchWithRetry(url: string, retries = 3, delay = 1000): Promise<Response> {
+    async fetchWithRetry(url: string, retries = 3, delay = 2000): Promise<Response> {
         for (let i = 0; i < retries; i++) {
             try {
-                const response = await fetch(url);
-                if (response.ok) return response;
+                // Enforce rate limit delay before each request attempt
+                await this.enforceRateLimit();
+                
+                // If this is the first attempt, add 2-second initial delay to ensure API readiness
+                if (i === 0) {
+                    console.log(`⏳ [Pre-delay] Waiting 2000ms before first API call to ensure readiness...`);
+                    await this.delay(2000);
+                }
 
-                if (response.status === 429) { // Rate limited
-                    await this.delay(delay * (i + 1));
+                console.log(`🔗 [API Call ${i + 1}/${retries}] Fetching: ${url.substring(0, 80)}...`);
+                const response = await fetch(url);
+                
+                // Update last request time
+                this.lastRequestTime = Date.now();
+
+                if (response.ok) {
+                    console.log(`✅ [API Success] Response OK`);
+                    return response;
+                }
+
+                // Handle rate limiting (429) and teapot (418) errors
+                if (response.status === 429 || response.status === 418) {
+                    let waitTime: number;
+                    
+                    if (response.status === 418) {
+                        // 418 I'm a teapot = severe rate limiting
+                        // First attempt should already have 2s initial delay
+                        // Retry 2: 2000ms, Retry 3: 4000ms, Retry 4: 8000ms, Retry 5: 16000ms, capped at 60s
+                        waitTime = i === 0 ? 2000 : Math.min(2000 * Math.pow(2, i), this.maxRetryDelay);
+                        console.warn(`🫖 [418 Rate Limit] IP banned temporarily. Attempt ${i + 1}/${retries}. Waiting ${waitTime}ms...`);
+                    } else {
+                        // 429 Too Many Requests - respects Retry-After header
+                        waitTime = response.headers.get('Retry-After')
+                            ? parseInt(response.headers.get('Retry-After')!) * 1000
+                            : (i === 0 ? 2000 : Math.min(2000 * Math.pow(2, i), this.maxRetryDelay));
+                        console.warn(`⏱️ [429 Rate Limit] Too many requests. Attempt ${i + 1}/${retries}. Waiting ${waitTime}ms...`);
+                    }
+                    
+                    await this.delay(waitTime);
                     continue;
                 }
 
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             } catch (error) {
-                if (i === retries - 1) throw error;
-                await this.delay(delay * (i + 1));
+                if (i === retries - 1) {
+                    console.error(`❌ [API Failed] Max retries exceeded: ${error}`);
+                    throw error;
+                }
+                // Exponential backoff starting from 2000ms: 2s, 4s, 8s, 16s, 32s, capped at 60s
+                const waitTime = Math.min(2000 * Math.pow(2, i), this.maxRetryDelay);
+                console.warn(`⚠️ [Retry] Request failed. Attempt ${i + 1}/${retries}. Waiting ${waitTime}ms...`);
+                await this.delay(waitTime);
             }
         }
         throw new Error('Max retries exceeded');
+    }
+
+    /**
+     * Enforce minimum delay between requests
+     */
+    private async enforceRateLimit(): Promise<void> {
+        const now = Date.now();
+        const timeSinceLastRequest = now - this.lastRequestTime;
+        
+        if (timeSinceLastRequest < this.minRequestInterval) {
+            const waitTime = this.minRequestInterval - timeSinceLastRequest;
+            await this.delay(waitTime);
+        }
+    }
+
+    /**
+     * Queue-based API calls to prevent concurrent requests
+     */
+    async queuedFetch(url: string): Promise<Response> {
+        return new Promise((resolve, reject) => {
+            this.requestQueue.push(async () => {
+                try {
+                    const response = await this.fetchWithRetry(url);
+                    resolve(response);
+                } catch (error) {
+                    reject(error);
+                }
+            });
+            this.processQueue();
+        });
+    }
+
+    /**
+     * Process queued requests one at a time
+     */
+    private async processQueue(): Promise<void> {
+        if (this.isProcessingQueue || this.requestQueue.length === 0) {
+            return;
+        }
+
+        this.isProcessingQueue = true;
+
+        while (this.requestQueue.length > 0) {
+            const request = this.requestQueue.shift();
+            if (request) {
+                try {
+                    await request();
+                } catch (error) {
+                    console.error('Queue processing error:', error);
+                }
+            }
+            // Add delay between queued requests
+            await this.delay(this.minRequestInterval);
+        }
+
+        this.isProcessingQueue = false;
     }
 
     /**
@@ -96,21 +196,25 @@ export class BinanceClient {
     }
 
     /**
-     * Get all 24hr tickers
+     * Get all 24hr tickers - This is a large request, use more retries
      */
     async getAll24hrTickers(): Promise<PriceData[]> {
         const url = `${this.baseURL}/fapi/v1/ticker/24hr`;
 
         try {
-            const response = await this.fetchWithRetry(url);
+            console.log('📊 Fetching all 24hr tickers (with 2s initial delay for reliability)...');
+            // Use 5 retries for this critical/heavy request
+            const response = await this.fetchWithRetry(url, 5, 2000);
             const rawData: any[] = await response.json();
+            
+            console.log(`✅ Successfully fetched ${rawData.length} tickers`);
 
             return rawData.map(data => ({
                 symbol: data.symbol,
                 price: parseFloat(data.lastPrice),
-                priceChangePercent: parseFloat(data.priceChangePercent), ///24小时价格变动百分比
+                priceChangePercent: parseFloat(data.priceChangePercent),
                 volume: parseFloat(data.volume), 
-                quoteVolume: parseFloat(data.quoteVolume), ///24小时成交金额
+                quoteVolume: parseFloat(data.quoteVolume),
                 timestamp: data.closeTime
             }));
         } catch (error) {
@@ -120,13 +224,15 @@ export class BinanceClient {
     }
 
     /**
-     * Get Klines data
+     * Get Klines data - Critical endpoint with initial 2-second delay for reliability
      */
     async getKlines(symbol: string, interval: string = '15m', limit: number = 200): Promise<Kline[]> {
         const url = `${this.baseURL}/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
 
         try {
-            const response = await this.fetchWithRetry(url);
+            console.log(`📋 [Klines] Fetching ${symbol} 15m candles (with 2s initial delay for reliability)...`);
+            // Use 5 retries with 2000ms base delay for Klines endpoint
+            const response = await this.fetchWithRetry(url, 5, 2000);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -148,9 +254,10 @@ export class BinanceClient {
                 });
             }
 
+            console.log(`✅ [Klines] Successfully fetched ${klines.length} candles for ${symbol}`);
             return klines;
         } catch (error) {
-            console.error('Failed to fetch Klines data:', error);
+            console.error(`❌ [Klines] Failed to fetch data for ${symbol}:`, error);
             throw error;
         }
     }

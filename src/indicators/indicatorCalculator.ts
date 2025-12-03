@@ -6,9 +6,11 @@ import { Kline } from '../binance/types';
 
 export interface AllIndicators {
     macd: MACDResult;
+    macdHistory: MACDResult[];  // 历史MACD值，用于动能检测
     volume: any; // VolumeProfile type
     currentPrice: number;
     rsi: number;
+    rsiHistory: number[];  // 历史RSI值，用于背离检测
     ma: MovingAverages;
     bollingerBands: BollingerBands;
     priceData?: {
@@ -36,15 +38,18 @@ export class IndicatorCalculator {
         // Calculate various indicators
         const macdResults = MACDCalculator.calculate(closePrices);
         const volumeProfile = VolumeAnalyzer.calculateVolumeProfile(volumes, closePrices);
-        const rsi = BasicIndicators.calculateRSI(closePrices);
+        const rsiHistory = this.calculateRSIHistory(closePrices);  // 获取RSI历史数组
+        const rsi = rsiHistory[rsiHistory.length - 1];  // 获取最新RSI
         const movingAverages = BasicIndicators.calculateMovingAverages(closePrices);
         const bollingerBands = BasicIndicators.calculateBollingerBands(closePrices);
 
         return {
             macd: macdResults[macdResults.length - 1], // Return the latest MACD value
+            macdHistory: macdResults,  // 保存完整MACD历史
             volume: volumeProfile,
             currentPrice: closePrices[closePrices.length - 1],
             rsi,
+            rsiHistory,  // 保存完整RSI历史
             ma: movingAverages,
             bollingerBands,
             priceData: {
@@ -53,6 +58,46 @@ export class IndicatorCalculator {
                 closes: closePrices
             }
         };
+    }
+
+    /**
+     * 计算RSI历史数组（而不仅仅是最后一个值）
+     */
+    private static calculateRSIHistory(closePrices: number[]): number[] {
+        const period = 14;
+        const rsiValues: number[] = [];
+
+        for (let i = 0; i < closePrices.length; i++) {
+            if (i < period) {
+                rsiValues.push(50);  // 前期数据不足，使用中性值
+            } else {
+                const gains: number[] = [];
+                const losses: number[] = [];
+
+                for (let j = i - period + 1; j <= i; j++) {
+                    const change = closePrices[j] - closePrices[j - 1];
+                    if (change > 0) {
+                        gains.push(change);
+                        losses.push(0);
+                    } else {
+                        gains.push(0);
+                        losses.push(Math.abs(change));
+                    }
+                }
+
+                const avgGain = gains.reduce((a, b) => a + b) / period;
+                const avgLoss = losses.reduce((a, b) => a + b) / period;
+
+                let rsi = 100;
+                if (avgLoss !== 0) {
+                    const rs = avgGain / avgLoss;
+                    rsi = 100 - 100 / (1 + rs);
+                }
+                rsiValues.push(rsi);
+            }
+        }
+
+        return rsiValues;
     }
 
     /**
@@ -82,7 +127,7 @@ export class IndicatorCalculator {
      */
     static validateIndicators(indicators: AllIndicators): boolean {
         const requiredFields: (keyof AllIndicators)[] = [
-            'macd', 'volume', 'currentPrice', 'rsi', 'ma', 'bollingerBands'
+            'macd', 'macdHistory', 'volume', 'currentPrice', 'rsi', 'rsiHistory', 'ma', 'bollingerBands'
         ];
 
         for (const field of requiredFields) {
@@ -100,6 +145,17 @@ export class IndicatorCalculator {
 
         if (indicators.rsi < 0 || indicators.rsi > 100) {
             console.warn('Abnormal RSI value:', indicators.rsi);
+            return false;
+        }
+
+        // Check history arrays
+        if (!Array.isArray(indicators.macdHistory) || indicators.macdHistory.length === 0) {
+            console.warn('Invalid MACD history data');
+            return false;
+        }
+
+        if (!Array.isArray(indicators.rsiHistory) || indicators.rsiHistory.length === 0) {
+            console.warn('Invalid RSI history data');
             return false;
         }
 
