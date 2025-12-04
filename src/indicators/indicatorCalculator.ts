@@ -2,6 +2,8 @@
 import { MACDCalculator, MACDResult } from './macd';
 import { VolumeAnalyzer } from './volume';
 import { BasicIndicators, MovingAverages, BollingerBands } from './basicIndicators';
+import { MomentumIndicators, KDJResult, WilliamsResult } from './momentum';
+import { PatternDetector, PatternDetectionResult } from './patterns';
 import { Kline } from '../binance/types';
 
 export interface AllIndicators {
@@ -13,6 +15,9 @@ export interface AllIndicators {
     rsiHistory: number[];  // 历史RSI值，用于背离检测
     ma: MovingAverages;
     bollingerBands: BollingerBands;
+    kdj?: KDJResult;  // KDJ随机指标
+    williamsR?: WilliamsResult;  // 威廉指标
+    patterns?: PatternDetectionResult[];  // K线形态识别结果
     priceData?: {
         highs: number[];
         lows: number[];
@@ -42,6 +47,16 @@ export class IndicatorCalculator {
         const rsi = rsiHistory[rsiHistory.length - 1];  // 获取最新RSI
         const movingAverages = BasicIndicators.calculateMovingAverages(closePrices);
         const bollingerBands = BasicIndicators.calculateBollingerBands(closePrices);
+        
+        // 计算KDJ和威廉指标
+        const kdjResults = MomentumIndicators.calculateKDJ(highs, lows, closePrices);
+        const kdj = kdjResults.length > 0 ? kdjResults[kdjResults.length - 1] : undefined;
+        
+        const williamsResults = MomentumIndicators.calculateWilliamsR(highs, lows, closePrices);
+        const williamsR = williamsResults.length > 0 ? williamsResults[williamsResults.length - 1] : undefined;
+        
+        // 检测K线形态
+        const patterns = PatternDetector.detectPatterns(klines);
 
         return {
             macd: macdResults[macdResults.length - 1], // Return the latest MACD value
@@ -52,6 +67,9 @@ export class IndicatorCalculator {
             rsiHistory,  // 保存完整RSI历史
             ma: movingAverages,
             bollingerBands,
+            kdj,  // KDJ随机指标
+            williamsR,  // 威廉指标
+            patterns,  // K线形态识别结果
             priceData: {
                 highs,
                 lows,

@@ -546,38 +546,148 @@ export class MarketPredictor {
                 bearishScore += 1.5;  // 上涨无量 = 陷阱信号
                 scoreDetails.push('VOL背离: 上涨无量 🔴 (-1.5) 危险!');
             }
-            // 成交量比率
-            else if (volumeRatio > 1.5) {
-                if (indicators.macd?.histogram > 0) {
-                    bullishScore += 1.5;
-                    scoreDetails.push('VOL: 放量+上涨(+1.5)');
-                } else {
-                    bearishScore += 1.5;
-                    scoreDetails.push('VOL: 放量+下跌(-1.5)');
-                }
-            } else if (volumeRatio > 1.2) {
-                bullishScore += 0.5;
-                scoreDetails.push('VOL: 温和放量(+0.5)');
-            } else if (volumeRatio < 0.7) {
-                // 上升趋势中成交量严重萎缩 = 更会警
-                if (macdPositive) {
-                    bearishScore += 1;  // 上涨趣势中无量 = 强为空空
-                    scoreDetails.push('VOL: 成交量严重萎缩 🔴 (-1)');
-                } else {
-                    bearishScore += 0.5;
-                    scoreDetails.push('VOL: 成交量萎缩(-0.5)');
-                }
+            // ... existing code ...
+        }
+
+        // ========== KDJ随机指标分析 (权重: 1) ==========
+        if (indicators.kdj) {
+            const { k, d, j } = indicators.kdj;
+            let kdjScore = 0;
+
+            // KDJ金叉
+            if (k > d && k <= 50) {
+                kdjScore += 1;  // 低位金叉，看涨
+                scoreDetails.push(`KDJ: 低位金叉 K=${k.toFixed(1)} (+1)`);
+            } else if (k > d && k > 50) {
+                kdjScore += 0.5;  // 金叉但在高位，要警惕
+                scoreDetails.push(`KDJ: 高位金叉 K=${k.toFixed(1)} (+0.5)`);
             }
 
-            // 成交量趋势
-            if (volumeTrend > 0.001) {
-                bullishScore += 0.5;
-                scoreDetails.push('VOL: 成交量上升趋势(+0.5)');
-            } else if (volumeTrend < -0.001) {
-                bearishScore += 0.5;
-                scoreDetails.push('VOL: 成交量下降趋势(-0.5)');
+            // KDJ死叉
+            if (k < d && k >= 50) {
+                kdjScore -= 1;  // 高位死叉，看跌
+                scoreDetails.push(`KDJ: 高位死叉 K=${k.toFixed(1)} (-1)`);
+            } else if (k < d && k < 50) {
+                kdjScore -= 0.5;  // 死叉但在低位，反弹可能
+                scoreDetails.push(`KDJ: 低位死叉 K=${k.toFixed(1)} (-0.5)`);
+            }
+
+            // KDJ极端位置
+            if (k > 80) {
+                kdjScore -= 1;  // 超买
+                scoreDetails.push(`KDJ: 超买区 K=${k.toFixed(1)} (-1)`);
+            } else if (k < 20) {
+                kdjScore += 1;  // 超卖
+                scoreDetails.push(`KDJ: 超卖区 K=${k.toFixed(1)} (+1)`);
+            }
+
+            bullishScore += Math.max(0, kdjScore);
+            if (kdjScore < 0) bearishScore += Math.abs(kdjScore);
+        }
+
+        // ========== 威廉指标分析 (权重: 0.5) ==========
+        if (indicators.williamsR) {
+            const { williamsr } = indicators.williamsR;
+            let williamsScore = 0;
+
+            // 威廉指标范围: -100到0
+            // > -20: 超买
+            // < -80: 超卖
+            if (williamsr > -20) {
+                williamsScore -= 0.5;  // 超买
+                scoreDetails.push(`Williams: 超买 R=${williamsr.toFixed(1)} (-0.5)`);
+            } else if (williamsr < -80) {
+                williamsScore += 0.5;  // 超卖
+                scoreDetails.push(`Williams: 超卖 R=${williamsr.toFixed(1)} (+0.5)`);
+            }
+
+            bullishScore += Math.max(0, williamsScore);
+            if (williamsScore < 0) bearishScore += Math.abs(williamsScore);
+        }
+
+        // ========== K线形态分析 (权重: 1.5) ==========
+        if (indicators.patterns && indicators.patterns.length > 0) {
+            for (const pattern of indicators.patterns) {
+                if (pattern.signal > 0) {
+                    bullishScore += pattern.signal * pattern.confidence;
+                    scoreDetails.push(`形态: ${pattern.pattern} (${(pattern.signal * pattern.confidence).toFixed(1)})`);
+                } else if (pattern.signal < 0) {
+                    bearishScore += Math.abs(pattern.signal) * pattern.confidence;
+                    scoreDetails.push(`形态: ${pattern.pattern} (${(pattern.signal * pattern.confidence).toFixed(1)})`);
+                }
             }
         }
+
+        // ========== KDJ随机指标分析 (权重: 1) ==========
+        if (indicators.kdj) {
+            const { k, d, j } = indicators.kdj;
+            let kdjScore = 0;
+
+            // KDJ金叉
+            if (k > d && k <= 50) {
+                kdjScore += 1;  // 低位金叉，看涨
+                scoreDetails.push(`KDJ: 低位金叉 K=${k.toFixed(1)} (+1)`);
+            } else if (k > d && k > 50) {
+                kdjScore += 0.5;  // 金叉但在高低，要警惕
+                scoreDetails.push(`KDJ: 高位金叉 K=${k.toFixed(1)} (+0.5)`);
+            }
+
+            // KDJ死叉
+            if (k < d && k >= 50) {
+                kdjScore -= 1;  // 高位死叉，看跌
+                scoreDetails.push(`KDJ: 高位死叉 K=${k.toFixed(1)} (-1)`);
+            } else if (k < d && k < 50) {
+                kdjScore -= 0.5;  // 死叉但在低位，反弹可能
+                scoreDetails.push(`KDJ: 低位死叉 K=${k.toFixed(1)} (-0.5)`);
+            }
+
+            // KDJ极端位置
+            if (k > 80) {
+                kdjScore -= 1;  // 超买
+                scoreDetails.push(`KDJ: 超买区 K=${k.toFixed(1)} (-1)`);
+            } else if (k < 20) {
+                kdjScore += 1;  // 超卖
+                scoreDetails.push(`KDJ: 超卖区 K=${k.toFixed(1)} (+1)`);
+            }
+
+            bullishScore += Math.max(0, kdjScore);
+            if (kdjScore < 0) bearishScore += Math.abs(kdjScore);
+        }
+
+        // ========== 威廉指标分析 (权重: 0.5) ==========
+        if (indicators.williamsR) {
+            const { williamsr } = indicators.williamsR;
+            let williamsScore = 0;
+
+            // 威廉指标范围: -100到0
+            // > -20: 超买
+            // < -80: 超卖
+            if (williamsr > -20) {
+                williamsScore -= 0.5;  // 超买
+                scoreDetails.push(`Williams: 超买 R=${williamsr.toFixed(1)} (-0.5)`);
+            } else if (williamsr < -80) {
+                williamsScore += 0.5;  // 超卖
+                scoreDetails.push(`Williams: 超卖 R=${williamsr.toFixed(1)} (+0.5)`);
+            }
+
+            bullishScore += Math.max(0, williamsScore);
+            if (williamsScore < 0) bearishScore += Math.abs(williamsScore);
+        }
+
+        // ========== K线形态分析 (权重: 1.5) ==========
+        if (indicators.patterns && indicators.patterns.length > 0) {
+            for (const pattern of indicators.patterns) {
+                if (pattern.signal > 0) {
+                    bullishScore += pattern.signal * pattern.confidence;
+                    scoreDetails.push(`形态: ${pattern.pattern} (${(pattern.signal * pattern.confidence).toFixed(1)})`);
+                } else if (pattern.signal < 0) {
+                    bearishScore += Math.abs(pattern.signal) * pattern.confidence;
+                    scoreDetails.push(`形态: ${pattern.pattern} (${(pattern.signal * pattern.confidence).toFixed(1)})`);
+                }
+            }
+        }
+
+        // ========== 综合评分生成信号 ==========
 
         // ========== 综合评分生成信号 ==========
         let prediction = 'HOLD';

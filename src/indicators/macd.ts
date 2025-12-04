@@ -1,8 +1,10 @@
 // src/indicators/macd.ts
 export interface MACDResult {
-    macd: number;
-    signal: number;
-    histogram: number;
+    macd: number;  // DIF线
+    signal: number;  // DEA线
+    histogram: number;  // MACD柱状图 (2 * (DIF - DEA))
+    momentumStrength?: number;  // 动量强度: 柱状图增速
+    trendStrength?: number;  // 趋势强度: MACD绝对值大小
 }
 
 export class MACDCalculator {
@@ -13,11 +15,20 @@ export class MACDCalculator {
         const dif = fastEMA.map((fast, i) => fast - slowEMA[i]);
         const dea = this.calculateEMA(dif, signalPeriod);
 
-        return dif.map((d, i) => ({
-            macd: d,
-            signal: dea[i],
-            histogram: 2 * (d - dea[i])
-        }));
+        return dif.map((d, i) => {
+            const histogram = 2 * (d - dea[i]);  // 标准MACD柱状图计算
+            const prevHistogram = i > 0 ? 2 * (dif[i - 1] - dea[i - 1]) : histogram;
+            
+            return {
+                macd: d,
+                signal: dea[i],
+                histogram: histogram,
+                // 动量强度: 柱状图变化速度，用于检测加速度
+                momentumStrength: histogram - prevHistogram,
+                // 趋势强度: MACD绝对值，越大说明趋势越强
+                trendStrength: Math.abs(d)
+            };
+        });
     }
 
     private static calculateEMA(data: number[], period: number): number[] {
