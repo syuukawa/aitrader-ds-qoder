@@ -6,6 +6,7 @@ import { IndicatorCalculator } from '../indicators/indicatorCalculator';
 import { PredictionConfig, PredictedSymbol } from './types';
 import { OpenInterestData, PriceData } from '../binance/types';
 import { DeepSeekAnalyzer } from '../analysis/deepseekAnalyzer';
+import { OpenInterestTrendAnalyzer } from '../indicators/openInterestTrend';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -345,30 +346,32 @@ export class MarketPredictor {
                 }
             }
             
-            // 如果预测是BUY或STRONG_BUY，则获取详细的OI数据
-            if (predictedSymbol.prediction === 'BUY' || predictedSymbol.prediction === 'STRONG_BUY') {
-                try {
-                    console.log(`📊 获取 ${symbol} 的详细OI数据...`);
-                    const openInterestData = await this.binanceClient.getOpenInterestStatistics({
-                        symbol: symbol,
-                        period: '1d',
-                        limit: 10
-                    });
+            // 获取15分钟间隔的OI数据用于趋势分析
+            try {
+                console.log(`📊 获取 ${symbol} 的15分钟OI数据用于趋势分析...`);
+                const openInterestData = await this.binanceClient.getOpenInterestStatistics({
+                    symbol: symbol,
+                    period: '15m',
+                    limit: 16
+                });
+                
+                // 保存OI数据
+                predictedSymbol.openInterestData = openInterestData;
+                
+                // 如果有OI数据，更新sumOpenInterestValue为最新值
+                if (openInterestData && openInterestData.length > 0) {
+                    const latestOI = openInterestData[openInterestData.length - 1];
+                    predictedSymbol.sumOpenInterestValue = parseFloat(latestOI.sumOpenInterestValue);
                     
-                    // console.log(`✅ ${symbol}: 获取详细OI数据成功`, openInterestData);
-                    predictedSymbol.openInterestData = openInterestData;
+                    // 分析OI趋势并添加到技术指标中
+                    const oiTrend = OpenInterestTrendAnalyzer.analyzeTrend(openInterestData);
+                    indicators.openInterestTrend = oiTrend;
                     
-                    // console.log(`✅ ${symbol}: ETHUSDT 获取详细OI数据成功`, openInterestData[openInterestData.length - 1]);
-
-                    // 如果有OI数据，也更新sumOpenInterestValue为最新值
-                    if (openInterestData && openInterestData.length > 0) {
-                        const latestOI = openInterestData[openInterestData.length - 1];
-                        predictedSymbol.sumOpenInterestValue = parseFloat(latestOI.sumOpenInterestValue);
-                    }
-                } catch (error) {
-                    console.warn(`⚠️  ${symbol}: 获取详细OI数据失败:`, error instanceof Error ? error.message : String(error));
-                    // OI数据获取失败不影响主流程
+                    console.log(`✅ ${symbol}: OI趋势分析完成 - 趋势: ${oiTrend.trend}, 强度: ${oiTrend.strength.toFixed(2)}%, 增长率: ${oiTrend.growthRate.toFixed(2)}%`);
                 }
+            } catch (error) {
+                console.warn(`⚠️  ${symbol}: 获取OI数据失败:`, error instanceof Error ? error.message : String(error));
+                // OI数据获取失败不影响主流程
             }
             
             console.log(`✅ ${symbol}: 信号=${predictedSymbol.prediction}, 置信=${predictedSymbol.confidence}%`);
@@ -399,7 +402,8 @@ export class MarketPredictor {
                 rsi: indicators.rsi,
                 ma: indicators.ma,
                 bollingerBands: indicators.bollingerBands,
-                priceData: indicators.priceData
+                priceData: indicators.priceData,
+                openInterestTrend: indicators.openInterestTrend
             };
 
             // 调用DeepSeek进行分析
@@ -712,6 +716,30 @@ export class MarketPredictor {
 
             bullishScore += Math.max(0, williamsScore);
             if (williamsScore < 0) bearishScore += Math.abs(williamsScore);
+        }
+
+        // ========== OI趋势分析 (权重: 1.5) ==========
+        if (indicators.openInterestTrend) {
+            const { trend, strength, growthRate } = indicators.openInterestTrend;
+            let oiScore = 0;
+            
+            // 根据趋势方向和强度评分
+            if (trend === 'UP') {
+                // OI上升趋势，看涨信号
+                oiScore += (strength / 100) * 1.5;  // 最大1.5分
+                scoreDetails.push(`OI趋势: 上升 ↑ (${growthRate.toFixed(2)}%) (+${oiScore.toFixed(1)})`);
+            } else if (trend === 'DOWN') {
+                // OI下降趋势，看跌信号
+                oiScore -= (strength / 100) * 1.5;  // 最小-1.5分
+                scoreDetails.push(`OI趋势: 下降 ↓ (${growthRate.toFixed(2)}%) (${oiScore.toFixed(1)})`);
+            } else {
+                // 中性趋势，小幅加分
+                oiScore += 0.2;
+                scoreDetails.push(`OI趋势: 中性 (${growthRate.toFixed(2)}%) (+0.2)`);
+            }
+            
+            bullishScore += Math.max(0, oiScore);
+            if (oiScore < 0) bearishScore += Math.abs(oiScore);
         }
 
         // ========== K线形态分析 (权重: 1.5) ==========

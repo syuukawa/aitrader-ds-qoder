@@ -4,6 +4,7 @@ import { VolumeAnalyzer } from './volume';
 import { BasicIndicators, MovingAverages, BollingerBands } from './basicIndicators';
 import { MomentumIndicators, KDJResult, WilliamsResult } from './momentum';
 import { PatternDetector, PatternDetectionResult } from './patterns';
+import { OpenInterestTrendResult, OpenInterestTrendAnalyzer } from './openInterestTrend';
 import { Kline } from '../binance/types';
 
 export interface AllIndicators {
@@ -18,6 +19,7 @@ export interface AllIndicators {
     kdj?: KDJResult;  // KDJ随机指标
     williamsR?: WilliamsResult;  // 威廉指标
     patterns?: PatternDetectionResult[];  // K线形态识别结果
+    openInterestTrend?: OpenInterestTrendResult;  // OI趋势分析结果
     priceData?: {
         highs: number[];
         lows: number[];

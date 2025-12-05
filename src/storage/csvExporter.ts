@@ -56,6 +56,7 @@ export class CSVExporter {
             'Confidence (%)',
             'Latest OI Value',
             'Latest OI Time',
+            'OI Growth Rate (%)',
             'Timestamp'
         ];
 
@@ -67,10 +68,16 @@ export class CSVExporter {
             // Get latest OI data if available
             let latestOiValue = 'N/A';
             let latestOiTime = 'N/A';
+            let oiGrowthRate = 'N/A';
             if (prediction.openInterestData && prediction.openInterestData.length > 0) {
                 const latestOi = prediction.openInterestData[prediction.openInterestData.length - 1];
                 latestOiValue = latestOi.sumOpenInterestValue;
                 latestOiTime = latestOi.timestamp.toString();
+                
+                // Calculate OI growth rate if we have trend data
+                if (indicators.openInterestTrend) {
+                    oiGrowthRate = indicators.openInterestTrend.growthRate.toFixed(2);
+                }
             }            
             const row = [
                 prediction.symbol,
@@ -96,6 +103,7 @@ export class CSVExporter {
                 (prediction.confidence || 0).toFixed(1),
                 latestOiValue,
                 latestOiTime,
+                oiGrowthRate,
                 this.toBeiJingTimeISO(prediction.timestamp)
             ];
 
@@ -157,6 +165,7 @@ export class CSVExporter {
             'Prediction'.padEnd(12),
             'Conf%'.padEnd(8),
             'Latest OI'.padEnd(12),
+            'OI Growth%'.padEnd(12),
             'Timestamp'.padEnd(20)
         ];
         console.log(headers.join('│'));
@@ -173,9 +182,15 @@ export class CSVExporter {
             
             // Get latest OI data if available
             let latestOiValue = 'N/A';
+            let oiGrowthRate = 'N/A';
             if (prediction.openInterestData && prediction.openInterestData.length > 0) {
                 const latestOi = prediction.openInterestData[prediction.openInterestData.length - 1];
                 latestOiValue = (parseFloat(latestOi.sumOpenInterestValue) / 1000000).toFixed(1) + 'M';
+                
+                // Get OI growth rate if available
+                if (indicators.openInterestTrend) {
+                    oiGrowthRate = indicators.openInterestTrend.growthRate.toFixed(2) + '%';
+                }
             }
 
             const row = [
@@ -191,6 +206,7 @@ export class CSVExporter {
                 (prediction.prediction || 'HOLD').padEnd(12),
                 ((prediction.confidence || 0).toFixed(1)).padEnd(8),
                 latestOiValue.padEnd(12),
+                oiGrowthRate.padEnd(12),
                 timestamp.padEnd(20)
             ];
             console.log(row.join('│'));
