@@ -139,13 +139,23 @@ export class PredictionScheduler {
             try {
                 // Generate simplified report using SimplifiedReporter
                 console.log('\n📋 Generating simplified market report...');
-                const summaryData: SimplifiedSummary[] = predictions.map(p => ({
-                    symbol: p.symbol,
-                    currentPrice: p.currentPrice,
-                    signal: p.prediction || 'HOLD',
-                    confidence: p.confidence || 0,
-                    timestamp: p.timestamp
-                }));
+                const summaryData: SimplifiedSummary[] = predictions.map(p => {
+                    // 获取OI趋势数据（如果存在）
+                    const oiTrendData = p.technicalIndicators?.openInterestTrend;
+                    
+                    return {
+                        symbol: p.symbol,
+                        currentPrice: p.currentPrice,
+                        signal: p.prediction || 'HOLD',
+                        confidence: p.confidence || 0,
+                        timestamp: p.timestamp,
+                        // OI相关指标
+                        oiTrend: oiTrendData?.trend,
+                        oiStrength: oiTrendData?.strength,
+                        oiGrowthRate: oiTrendData?.growthRate,
+                        sumOpenInterestValue: p.sumOpenInterestValue
+                    };
+                });
 
                 // Generate Markdown report
                 const markdownReport = SimplifiedReporter.generateMarkdownReport(summaryData);

@@ -10,6 +10,11 @@ export interface SimplifiedSummary {
     signal: string;
     confidence: number;
     timestamp: number;
+    // OI相关指标
+    oiTrend?: 'UP' | 'DOWN' | 'NEUTRAL';  // OI趋势方向
+    oiStrength?: number;                  // OI趋势强度 (0-100)
+    oiGrowthRate?: number;                // OI增长率 (%)
+    sumOpenInterestValue?: number;        // OI总价值 (USDT)
 }
 
 /**
@@ -30,12 +35,13 @@ export class SimplifiedReporter {
         content += `## 📋 交易对信号列表\n\n`;
 
         // 创建Markdown表格
-        content += `| 序号 | 交易对 | 当前价格 | 交易信号 | 置信度 |\n`;
-        content += `|------|--------|----------|----------|--------|\n`;
+        content += `| 序号 | 交易对 | 当前价格 | 交易信号 | 置信度 | OI趋势 | OI强度 | OI增长率 |\n`;
+        content += `|------|--------|----------|----------|--------|--------|--------|----------|\n`;
 
         sorted.forEach((summary, index) => {
             const signalEmoji = this.getSignalEmoji(summary.signal);
-            content += `| ${index + 1} | ${summary.symbol} | ${summary.currentPrice.toFixed(8)} | ${signalEmoji} ${summary.signal} | ${summary.confidence.toFixed(1)}% |\n`;
+            const oiTrendEmoji = this.getOITrendEmoji(summary.oiTrend);
+            content += `| ${index + 1} | ${summary.symbol} | ${summary.currentPrice.toFixed(8)} | ${signalEmoji} ${summary.signal} | ${summary.confidence.toFixed(1)}% | ${oiTrendEmoji} ${summary.oiTrend || 'N/A'} | ${summary.oiStrength?.toFixed(1) || 'N/A'} | ${summary.oiGrowthRate ? summary.oiGrowthRate.toFixed(2) + '%' : 'N/A'} |\n`;
         });
 
         // 添加统计部分
@@ -60,7 +66,7 @@ export class SimplifiedReporter {
     }
 
     /**
-     * 按信号强度排序
+     * 按照新的规则排序：1. OI Growth% 2. Latest OI 3. Prediction 4. Conf%
      */
     private static sortBySignalStrength(summaries: SimplifiedSummary[]): SimplifiedSummary[] {
         // 定义信号权重（数值越小，优先级越高）
@@ -73,16 +79,32 @@ export class SimplifiedReporter {
         };
 
         return summaries.sort((a, b) => {
-            // 首先按信号类型排序
+            // 1. 首先按OI增长率降序排列
+            const oiGrowthRateA = a.oiGrowthRate || 0;
+            const oiGrowthRateB = b.oiGrowthRate || 0;
+            
+            if (oiGrowthRateA !== oiGrowthRateB) {
+                return oiGrowthRateB - oiGrowthRateA;
+            }
+
+            // 2. OI增长率相同时，按最新OI值降序排列
+            const latestOIA = a.sumOpenInterestValue || 0;
+            const latestOIB = b.sumOpenInterestValue || 0;
+            
+            if (latestOIA !== latestOIB) {
+                return latestOIB - latestOIA;
+            }
+
+            // 3. 最新OI值相同时，按信号类型排序
             const weightA = signalWeights[a.signal] !== undefined ? signalWeights[a.signal] : Infinity;
             const weightB = signalWeights[b.signal] !== undefined ? signalWeights[b.signal] : Infinity;
-
+            
             if (weightA !== weightB) {
                 return weightA - weightB;
             }
 
-            // 信号类型相同，则按置信度降序排列
-            return b.confidence - a.confidence;
+            // 4. 信号类型相同时，按置信度降序排列
+            return (b.confidence || 0) - (a.confidence || 0);
         });
     }
 
@@ -98,6 +120,18 @@ export class SimplifiedReporter {
             '强烈卖出': '🔴'
         };
         return emojiMap[signal] ?? '⚪';
+    }
+
+    /**
+     * 获取OI趋势对应的表情符号
+     */
+    private static getOITrendEmoji(oiTrend?: 'UP' | 'DOWN' | 'NEUTRAL'): string {
+        const emojiMap: Record<string, string> = {
+            'UP': '📈',
+            'DOWN': '📉',
+            'NEUTRAL': '➡️'
+        };
+        return emojiMap[oiTrend || ''] ?? '';
     }
 
     /**

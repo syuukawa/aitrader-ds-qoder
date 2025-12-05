@@ -348,7 +348,7 @@ export class MarketPredictor {
             
             // 获取15分钟间隔的OI数据用于趋势分析
             try {
-                console.log(`📊 获取 ${symbol} 的15分钟OI数据用于趋势分析...`);
+                // console.log(`📊 获取 ${symbol} 的15分钟OI数据用于趋势分析...`);
                 const openInterestData = await this.binanceClient.getOpenInterestStatistics({
                     symbol: symbol,
                     period: '15m',
@@ -365,16 +365,16 @@ export class MarketPredictor {
                     
                     // 分析OI趋势并添加到技术指标中
                     const oiTrend = OpenInterestTrendAnalyzer.analyzeTrend(openInterestData);
-                    indicators.openInterestTrend = oiTrend;
+                    indicators.openInterestTrend = oiTrend; 
                     
-                    console.log(`✅ ${symbol}: OI趋势分析完成 - 趋势: ${oiTrend.trend}, 强度: ${oiTrend.strength.toFixed(2)}%, 增长率: ${oiTrend.growthRate.toFixed(2)}%`);
+                    // console.log(`✅ ${symbol}: OI趋势分析完成 - 趋势: ${oiTrend.trend}, 强度: ${oiTrend.strength.toFixed(2)}%, 增长率: ${oiTrend.growthRate.toFixed(2)}%`);
                 }
             } catch (error) {
                 console.warn(`⚠️  ${symbol}: 获取OI数据失败:`, error instanceof Error ? error.message : String(error));
                 // OI数据获取失败不影响主流程
             }
             
-            console.log(`✅ ${symbol}: 信号=${predictedSymbol.prediction}, 置信=${predictedSymbol.confidence}%`);
+            // console.log(`✅ ${symbol}: 信号=${predictedSymbol.prediction}, 置信=${predictedSymbol.confidence}%`);
             return predictedSymbol;        } catch (error) {
             // 全局会吸穿意料之外的所有错误
             console.error(`❌ 处理 ${symbolData.symbol} 时发生意料错误:`, error);
@@ -411,9 +411,9 @@ export class MarketPredictor {
 
             // 从分析结果中提取交易信号
             const signal = this.extractSignalFromAnalysis(result.analysis);
-            const confidence = this.extractConfidenceFromAnalysis(result.analysis);
+            const confidence = this.extractConfidenceFromAnalysis(result.analysis, indicators);
 
-            console.log(`✅ ${symbol} - DeepSeek分析完成: ${signal} (置信度: ${confidence}%)`);
+            console.log(`✅ ${symbol} - DeepSeek分析完成: ${signal} (置信度: ${confidence.toFixed(1)}%)`);
 
             return {
                 prediction: signal,
@@ -766,35 +766,58 @@ export class MarketPredictor {
         console.log(`   💡 ${scoreDetails.join(' | ')}`);
         console.log(`   📊 看涨分: ${bullishScore.toFixed(1)}, 看跌分: ${bearishScore.toFixed(1)}, 净分: ${netScore.toFixed(1)}`);
 
-        // 根据净分和单项得分确定信号
+        // 根据净分和单项得分确定信号，并考虑OI趋势的影响
+        let oiFactor = 1.0; // OI因子，默认为1.0（无影响）
+        if (indicators.openInterestTrend) {
+            const { trend, strength, growthRate } = indicators.openInterestTrend;
+            // 根据OI趋势强度调整置信度
+            if (trend === 'UP' && strength > 50) {
+                // 强劲的上升OI趋势增加置信度
+                oiFactor = 1.0 + (strength / 100) * 0.3; // 最多增加30%置信度
+            } else if (trend === 'DOWN' && strength > 50) {
+                // 强劲的下降OI趋势增加反向置信度
+                oiFactor = 1.0 + (strength / 100) * 0.3; // 最多增加30%置信度
+            } else if (Math.abs(growthRate) < 2) {
+                // OI变化较小，略微降低置信度
+                oiFactor = 0.95;
+            }
+        }
+        
         if (bullishScore >= 5) {
             prediction = 'STRONG_BUY';
             confidence = Math.min(95, 75 + bullishScore);
-            scoreDetails.push(`→ 信号: 强烈买入(${confidence}%)`);
+            confidence = Math.min(95, confidence * oiFactor); // 应用OI因子
+            scoreDetails.push(`→ 信号: 强烈买入(${confidence.toFixed(1)}%)`);
         } else if (bullishScore >= 3.5) {
             prediction = 'BUY';
             confidence = Math.min(90, 65 + bullishScore * 2);
-            scoreDetails.push(`→ 信号: 买入(${confidence}%)`);
+            confidence = Math.min(90, confidence * oiFactor); // 应用OI因子
+            scoreDetails.push(`→ 信号: 买入(${confidence.toFixed(1)}%)`);
         } else if (bearishScore >= 5) {
             prediction = 'STRONG_SELL';
             confidence = Math.min(95, 75 + bearishScore);
-            scoreDetails.push(`→ 信号: 强烈卖出(${confidence}%)`);
+            confidence = Math.min(95, confidence * oiFactor); // 应用OI因子
+            scoreDetails.push(`→ 信号: 强烈卖出(${confidence.toFixed(1)}%)`);
         } else if (bearishScore >= 3.5) {
             prediction = 'SELL';
             confidence = Math.min(90, 65 + bearishScore * 2);
-            scoreDetails.push(`→ 信号: 卖出(${confidence}%)`);
+            confidence = Math.min(90, confidence * oiFactor); // 应用OI因子
+            scoreDetails.push(`→ 信号: 卖出(${confidence.toFixed(1)}%)`);
         } else if (bullishScore > bearishScore + 1) {
             prediction = 'BUY';
             confidence = 50 + bullishScore * 5;
-            scoreDetails.push(`→ 信号: 买入(${confidence}%)`);
+            confidence = Math.min(90, confidence * oiFactor); // 应用OI因子
+            scoreDetails.push(`→ 信号: 买入(${confidence.toFixed(1)}%)`);
         } else if (bearishScore > bullishScore + 1) {
             prediction = 'SELL';
             confidence = 50 + bearishScore * 5;
-            scoreDetails.push(`→ 信号: 卖出(${confidence}%)`);
+            confidence = Math.min(90, confidence * oiFactor); // 应用OI因子
+            scoreDetails.push(`→ 信号: 卖出(${confidence.toFixed(1)}%)`);
         } else {
             prediction = 'HOLD';
             confidence = 50 + Math.abs(netScore) * 2;
-            scoreDetails.push(`→ 信号: 持有(${confidence}%)`);
+            confidence = Math.min(80, confidence * oiFactor); // 应用OI因子
+            scoreDetails.push(`→ 信号: 持有(${confidence.toFixed(1)}%)`);
         }
 
         // 确保置信度在0-100之间
@@ -829,11 +852,29 @@ export class MarketPredictor {
     /**
      * 从DeepSeek分析结果中提取置信度
      */
-    private extractConfidenceFromAnalysis(analysis: string): number {
+    private extractConfidenceFromAnalysis(analysis: string, indicators?: any): number {
         // 查找分析结果中的置信度信息
         const confidenceMatch = analysis.match(/(?:置信度|confidence)[:\s]+(\d+)%?/i);
         if (confidenceMatch && confidenceMatch[1]) {
-            return Math.min(100, Math.max(0, parseInt(confidenceMatch[1])));
+            let confidence = Math.min(100, Math.max(0, parseInt(confidenceMatch[1])));
+            
+            // 如果有技术指标数据，考虑OI趋势对置信度的影响
+            if (indicators && indicators.openInterestTrend) {
+                const { trend, strength, growthRate } = indicators.openInterestTrend;
+                // 根据OI趋势强度调整置信度
+                if (trend === 'UP' && strength > 50) {
+                    // 强劲的上升OI趋势增加置信度
+                    confidence = Math.min(100, confidence * (1.0 + (strength / 100) * 0.2)); // 最多增加20%置信度
+                } else if (trend === 'DOWN' && strength > 50) {
+                    // 强劲的下降OI趋势增加反向置信度
+                    confidence = Math.min(100, confidence * (1.0 + (strength / 100) * 0.2)); // 最多增加20%置信度
+                } else if (Math.abs(growthRate) < 2) {
+                    // OI变化较小，略微降低置信度
+                    confidence = Math.min(100, confidence * 0.95);
+                }
+            }
+            
+            return confidence;
         }
 
         // 如果未找到明确的置信度，根据分析内容推估
@@ -842,7 +883,25 @@ export class MarketPredictor {
 
         const baseConfidence = 60;
         const adjustment = (strongIndicators - weakIndicators) * 5;
-        return Math.min(100, Math.max(0, baseConfidence + adjustment));
+        let confidence = Math.min(100, Math.max(0, baseConfidence + adjustment));
+        
+        // 如果有技术指标数据，考虑OI趋势对置信度的影响
+        if (indicators && indicators.openInterestTrend) {
+            const { trend, strength, growthRate } = indicators.openInterestTrend;
+            // 根据OI趋势强度调整置信度
+            if (trend === 'UP' && strength > 50) {
+                // 强劲的上升OI趋势增加置信度
+                confidence = Math.min(100, confidence * (1.0 + (strength / 100) * 0.2)); // 最多增加20%置信度
+            } else if (trend === 'DOWN' && strength > 50) {
+                // 强劲的下降OI趋势增加反向置信度
+                confidence = Math.min(100, confidence * (1.0 + (strength / 100) * 0.2)); // 最多增加20%置信度
+            } else if (Math.abs(growthRate) < 2) {
+                // OI变化较小，略微降低置信度
+                confidence = Math.min(100, confidence * 0.95);
+            }
+        }
+        
+        return confidence;
     }
 
     /**
