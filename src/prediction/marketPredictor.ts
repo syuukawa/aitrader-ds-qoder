@@ -214,7 +214,22 @@ export class MarketPredictor {
             //             period: '1d',
             //             limit: 1
             //         });
-            //         
+            // SKYAIUSDT: 获取详细OI数据成功 [
+            //   {
+            //     symbol: 'SKYAIUSDT',
+            //     sumOpenInterest: '127234701.00000000', // 持仓总数量
+            //     sumOpenInterestValue: '2583657.10248723', // 持仓总价值
+            //     CMCCirculatingSupply: '1000000000.00000000',
+            //     timestamp: 1764720000000
+            //   },
+            //   {
+            //     symbol: 'SKYAIUSDT',
+            //     sumOpenInterest: '191186259.00000000',
+            //     sumOpenInterestValue: '5228210.02841544',
+            //     CMCCirculatingSupply: '1000000000.00000000',
+            //     timestamp: 1764806400000
+            //   }
+            // ]
             //         if (openInterestData && openInterestData.length > 0) {
             //             const sumOpenInterestValue = parseFloat(openInterestData[0].sumOpenInterestValue);
             //             
@@ -330,9 +345,34 @@ export class MarketPredictor {
                 }
             }
             
+            // 如果预测是BUY或STRONG_BUY，则获取详细的OI数据
+            if (predictedSymbol.prediction === 'BUY' || predictedSymbol.prediction === 'STRONG_BUY') {
+                try {
+                    console.log(`📊 获取 ${symbol} 的详细OI数据...`);
+                    const openInterestData = await this.binanceClient.getOpenInterestStatistics({
+                        symbol: symbol,
+                        period: '1d',
+                        limit: 10
+                    });
+                    
+                    // console.log(`✅ ${symbol}: 获取详细OI数据成功`, openInterestData);
+                    predictedSymbol.openInterestData = openInterestData;
+                    
+                    // console.log(`✅ ${symbol}: ETHUSDT 获取详细OI数据成功`, openInterestData[openInterestData.length - 1]);
+
+                    // 如果有OI数据，也更新sumOpenInterestValue为最新值
+                    if (openInterestData && openInterestData.length > 0) {
+                        const latestOI = openInterestData[openInterestData.length - 1];
+                        predictedSymbol.sumOpenInterestValue = parseFloat(latestOI.sumOpenInterestValue);
+                    }
+                } catch (error) {
+                    console.warn(`⚠️  ${symbol}: 获取详细OI数据失败:`, error instanceof Error ? error.message : String(error));
+                    // OI数据获取失败不影响主流程
+                }
+            }
+            
             console.log(`✅ ${symbol}: 信号=${predictedSymbol.prediction}, 置信=${predictedSymbol.confidence}%`);
-            return predictedSymbol;
-        } catch (error) {
+            return predictedSymbol;        } catch (error) {
             // 全局会吸穿意料之外的所有错误
             console.error(`❌ 处理 ${symbolData.symbol} 时发生意料错误:`, error);
             return null;  // 返回 null 而不是抛出，保证程序继续运行

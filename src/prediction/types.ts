@@ -1,5 +1,6 @@
 // src/prediction/types.ts
 import { AllIndicators } from '../indicators/indicatorCalculator';
+import { OpenInterestData } from '../binance/types';
 
 export interface PredictionConfig {
     // Volume filter settings
@@ -28,6 +29,7 @@ export interface PredictedSymbol {
     volume24h: number;
     priceChangePercent24h: number;
     sumOpenInterestValue?: number;       // 24h open interest value in USDT
+    openInterestData?: OpenInterestData[]; // Detailed open interest data
     technicalIndicators: AllIndicators;
     prediction?: string;                 // Prediction from DeepSeek analysis
     confidence?: number;                 // Confidence level of prediction

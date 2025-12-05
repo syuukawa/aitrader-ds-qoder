@@ -54,6 +54,8 @@ export class CSVExporter {
             'Volume Trend',
             'Prediction',
             'Confidence (%)',
+            'Latest OI Value',
+            'Latest OI Time',
             'Timestamp'
         ];
 
@@ -62,6 +64,14 @@ export class CSVExporter {
         // CSV Data Rows
         for (const prediction of predictions) {
             const indicators = prediction.technicalIndicators;
+            // Get latest OI data if available
+            let latestOiValue = 'N/A';
+            let latestOiTime = 'N/A';
+            if (prediction.openInterestData && prediction.openInterestData.length > 0) {
+                const latestOi = prediction.openInterestData[prediction.openInterestData.length - 1];
+                latestOiValue = latestOi.sumOpenInterestValue;
+                latestOiTime = latestOi.timestamp.toString();
+            }            
             const row = [
                 prediction.symbol,
                 prediction.currentPrice.toFixed(8),
@@ -84,6 +94,8 @@ export class CSVExporter {
                 indicators.volume?.volumeTrend?.toFixed(6) || 'N/A',
                 prediction.prediction || 'HOLD',
                 (prediction.confidence || 0).toFixed(1),
+                latestOiValue,
+                latestOiTime,
                 this.toBeiJingTimeISO(prediction.timestamp)
             ];
 
@@ -144,6 +156,7 @@ export class CSVExporter {
             'Vol Ratio'.padEnd(10),
             'Prediction'.padEnd(12),
             'Conf%'.padEnd(8),
+            'Latest OI'.padEnd(12),
             'Timestamp'.padEnd(20)
         ];
         console.log(headers.join('│'));
@@ -157,6 +170,13 @@ export class CSVExporter {
             const bbPosition = indicators.bollingerBands?.position || 'N/A';
             const volumeRatio = indicators.volume?.volumeRatio?.toFixed(2) || 'N/A';
             const timestamp = this.toBeiJingTime(prediction.timestamp);
+            
+            // Get latest OI data if available
+            let latestOiValue = 'N/A';
+            if (prediction.openInterestData && prediction.openInterestData.length > 0) {
+                const latestOi = prediction.openInterestData[prediction.openInterestData.length - 1];
+                latestOiValue = (parseFloat(latestOi.sumOpenInterestValue) / 1000000).toFixed(1) + 'M';
+            }
 
             const row = [
                 prediction.symbol.padEnd(12),
@@ -170,6 +190,7 @@ export class CSVExporter {
                 volumeRatio.padEnd(10),
                 (prediction.prediction || 'HOLD').padEnd(12),
                 ((prediction.confidence || 0).toFixed(1)).padEnd(8),
+                latestOiValue.padEnd(12),
                 timestamp.padEnd(20)
             ];
             console.log(row.join('│'));
