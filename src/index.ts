@@ -5,7 +5,6 @@ import { PredictionScheduler } from './scheduler/predictionScheduler';
 import { BinanceClient } from './binance/client';
 
 dotenv.config();
-
 async function main() {
   console.log('🚀 Starting AI Trader with Market Prediction Scheduler');
 
@@ -16,7 +15,7 @@ async function main() {
   const config = {
     // Volume filter settings
     minVolumeThreshold: 40 * 1000000,        // 40M USDT
-    minPriceChangePercent: 8,            // 5%
+    minPriceChangePercent: 7,            // 5%
     
     // K-line settings
     klineInterval: '15m',

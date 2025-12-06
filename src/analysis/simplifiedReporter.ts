@@ -35,13 +35,16 @@ export class SimplifiedReporter {
         content += `## 📋 交易对信号列表\n\n`;
 
         // 创建Markdown表格
-        content += `| 序号 | 交易对 | 当前价格 | 交易信号 | 置信度 | OI趋势 | OI强度 | OI增长率 |\n`;
-        content += `|------|--------|----------|----------|--------|--------|--------|----------|\n`;
+        content += `| 序号 | 交易对 | 当前价格 | 交易信号 | 置信度 | OI趋势 | OI强度 | OI增长率 | OI价值 |\n`;
+        content += `|------|--------|----------|----------|--------|--------|--------|----------|---------|\n`;
 
         sorted.forEach((summary, index) => {
             const signalEmoji = this.getSignalEmoji(summary.signal);
             const oiTrendEmoji = this.getOITrendEmoji(summary.oiTrend);
-            content += `| ${index + 1} | ${summary.symbol} | ${summary.currentPrice.toFixed(8)} | ${signalEmoji} ${summary.signal} | ${summary.confidence.toFixed(1)}% | ${oiTrendEmoji} ${summary.oiTrend || 'N/A'} | ${summary.oiStrength?.toFixed(1) || 'N/A'} | ${summary.oiGrowthRate ? summary.oiGrowthRate.toFixed(2) + '%' : 'N/A'} |\n`;
+            // 格式化OI价值，如果存在则显示为百万单位(M)，否则显示N/A
+            const oiValueFormatted = summary.sumOpenInterestValue ? 
+                `${(summary.sumOpenInterestValue / 1000000).toFixed(2)}M` : 'N/A';
+            content += `| ${index + 1} | ${summary.symbol} | ${summary.currentPrice.toFixed(8)} | ${signalEmoji} ${summary.signal} | ${summary.confidence.toFixed(1)}% | ${oiTrendEmoji} ${summary.oiTrend || 'N/A'} | ${summary.oiStrength?.toFixed(1) || 'N/A'} | ${summary.oiGrowthRate ? summary.oiGrowthRate.toFixed(2) + '%' : 'N/A'} | ${oiValueFormatted} |\n`;
         });
 
         // 添加统计部分

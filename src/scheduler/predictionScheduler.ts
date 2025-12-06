@@ -37,11 +37,11 @@ export class PredictionScheduler {
             return;
         }
 
-        console.log('🕐 Starting prediction scheduler (every 15 minutes)');
+        console.log('🕐 Starting prediction scheduler (every 5 minutes)');
         console.log('⏰ Next execution: ' + this.getNextExecutionTime());
 
-        // Create cron job that runs every 15 minutes
-        this.cronJob = new CronJob('0 */15 * * * *', async () => {
+        // Create cron job that runs every  minutes
+        this.cronJob = new CronJob('0 */5 * * * *', async () => {
             await this.executePrediction();
         });
 
