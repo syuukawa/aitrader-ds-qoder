@@ -15,11 +15,18 @@ export class BinanceClient {
     private readonly maxRetries: number = 5;  // More retries for reliability
     private readonly baseRetryDelay: number = 2000;  // Start with 2 seconds (user request)
     private readonly maxRetryDelay: number = 60000;  // Cap at 60 seconds for max safety
+    private readonly apiKey?: string;
+    private readonly apiSecret?: string;
     private baseURL = 'https://fapi.binance.com';
     private lastRequestTime: number = 0;
     private minRequestInterval: number = 500;  // 500ms between requests for safety
     private requestQueue: Array<() => Promise<any>> = [];
     private isProcessingQueue: boolean = false;
+
+    constructor(apiKey?: string, apiSecret?: string) {
+        this.apiKey = apiKey;
+        this.apiSecret = apiSecret;
+    }
 
     /**
      * Fetch data with retry mechanism and rate limiting
@@ -258,6 +265,53 @@ export class BinanceClient {
             return klines;
         } catch (error) {
             console.error(`❌ [Klines] Failed to fetch data for ${symbol}:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Send signed request (for trading endpoints)
+     */
+    async sendSignedRequest(method: string, endpoint: string, params: Record<string, any> = {}): Promise<any> {
+        if (!this.apiKey || !this.apiSecret) {
+            throw new Error('API key and secret are required for signed requests');
+        }
+
+        // Add timestamp
+        params.timestamp = Date.now();
+
+        // Create query string
+        const queryString = Object.keys(params)
+            .sort()
+            .map(key => `${key}=${params[key]}`)
+            .join('&');
+
+        // Sign the query string
+        const signature = require('crypto')
+            .createHmac('sha256', this.apiSecret)
+            .update(queryString)
+            .digest('hex');
+
+        // Build URL
+        const url = `${this.baseURL}${endpoint}?${queryString}&signature=${signature}`;
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'X-MBX-APIKEY': this.apiKey,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error(`Failed to send signed ${method} request to ${endpoint}:`, error);
             throw error;
         }
     }

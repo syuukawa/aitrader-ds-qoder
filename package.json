@@ -12,6 +12,8 @@
     "test:csv": "ts-node src/test/csvExporterTest.ts",
     "test:duckdb": "ts-node src/test/duckdbTest.ts",
     "test:simple-duckdb": "ts-node src/test/simpleDuckdbTest.ts",
+    "test:order": "ts-node src/test/orderManagerTest.ts",
+    "test:long": "ts-node src/trading/openLongOrderTest.ts",
     "lint": "eslint src/**/*.ts",
     "postinstall": "npm run build"
   },

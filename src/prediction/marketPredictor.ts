@@ -168,10 +168,10 @@ export class MarketPredictor {
             
             // 获取所有24小时行情数据
             const allTickers = await this.binanceClient.getAll24hrTickers();
-            console.log(`📈 共获得 ${allTickers.length} 个交易对的数据`);
+            // console.log(`📈 共获得 ${allTickers.length} 个交易对的数据`);
             
             // 第一步: 根据OI价值和24小时涨幅初步筛选
-            console.log('🔍 第1步: 根据 OI价值 > 50M 和 24h涨幅 > 5% 进行初步筛选...');
+            // console.log('🔍 第1步: 根据 OI价值 > 50M 和 24h涨幅 > 5% 进行初步筛选...');
             const candidateSymbols = allTickers.filter(ticker => {
                 // 仅保留USDT交易对
                 if (!ticker.symbol.endsWith('USDT')) {
@@ -185,7 +185,7 @@ export class MarketPredictor {
                 if(ticker.quoteVolume < this.config.minVolumeThreshold){
                     return false;
                 }
-                console.log(`   ✓ ${ticker.symbol}: 涨幅=${ticker.priceChangePercent.toFixed(2)}%, 24h成交量=${ticker.quoteVolume.toFixed(2)} USDT`);
+                // console.log(`   ✓ ${ticker.symbol}: 涨幅=${ticker.priceChangePercent.toFixed(2)}%, 24h成交量=${ticker.quoteVolume.toFixed(2)} USDT`);
                 return true;
             });
             
@@ -193,7 +193,7 @@ export class MarketPredictor {
             
             // 第二步: 注释掉OI数据获取（性能原因）
             // 直接使用初步筛选的结果作为最终筛选结果
-            console.log('⏭️  跳过第2步: OI数据筛选已禁用（性能优化）');
+            // console.log('⏭️  跳过第2步: OI数据筛选已禁用（性能优化）');
             const filteredSymbols: PriceData[] = candidateSymbols;
             
             // ========== 原始OI筛选逻辑（已注释）==========
@@ -253,10 +253,10 @@ export class MarketPredictor {
             console.log(`🎯 筛选后得到 ${filteredSymbols.length} 个符合条件的交易对 (满足: 24h涨幅>5%，OI筛选已禁用)`);
             
             // 第三步: 排除黑名单中的交易对
-            console.log('🔍 第3步: 排除黑名单中的交易对...');
+            // console.log('🔍 第3步: 排除黑名单中的交易对...');
             const finalFilteredSymbols = filteredSymbols.filter(ticker => {
                 if (this.excludedPairs.has(ticker.symbol)) {
-                    console.log(`   ⏭️  跳过已排除的交易对: ${ticker.symbol}`);
+                    // console.log(`   ⏭️  跳过已排除的交易对: ${ticker.symbol}`);
                     return false;
                 }
                 return true;
@@ -763,8 +763,9 @@ export class MarketPredictor {
 
         // 计算净分
         const netScore = bullishScore - bearishScore;
-        console.log(`   💡 ${scoreDetails.join(' | ')}`);
-        console.log(`   📊 看涨分: ${bullishScore.toFixed(1)}, 看跌分: ${bearishScore.toFixed(1)}, 净分: ${netScore.toFixed(1)}`);
+        // TODO: 2025-12-07 先注释掉
+        // console.log(`   💡 ${scoreDetails.join(' | ')}`);
+        // console.log(`   📊 看涨分: ${bullishScore.toFixed(1)}, 看跌分: ${bearishScore.toFixed(1)}, 净分: ${netScore.toFixed(1)}`);
 
         // 根据净分和单项得分确定信号，并考虑OI趋势的影响
         let oiFactor = 1.0; // OI因子，默认为1.0（无影响）

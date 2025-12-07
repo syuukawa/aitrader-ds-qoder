@@ -111,36 +111,36 @@ export class PredictionScheduler {
                 return;
             }
 
-            // Try to export and report with error handling for each step
-            try {
-                // Print table view (all predictions)
-                CSVExporter.printToConsole(predictions);
-            } catch (error) {
-                errorCount++;
-                console.warn('⚠️  Failed to print table to console:', error);
-            }
+            // // Try to export and report with error handling for each step
+            // try {
+            //     // Print table view (all predictions)
+            //     CSVExporter.printToConsole(predictions);
+            // } catch (error) {
+            //     errorCount++;
+            //     console.warn('⚠️  Failed to print table to console:', error);
+            // }
 
-            try {
-                // Export to CSV (all predictions)
-                console.log('\n📊 Exporting results to CSV format...');
-                CSVExporter.saveToFile(predictions, './output');
-                console.log('✅ CSV export completed');
-            } catch (error) {
-                errorCount++;
-                console.warn('⚠️  Failed to export to CSV:', error);
-            }
+            // try {
+            //     // Export to CSV (all predictions)
+            //     console.log('\n📊 Exporting results to CSV format...');
+            //     CSVExporter.saveToFile(predictions, './output');
+            //     console.log('✅ CSV export completed');
+            // } catch (error) {
+            //     errorCount++;
+            //     console.warn('⚠️  Failed to export to CSV:', error);
+            // }
 
-            try {
-                // Print summary (all predictions)
-                const summary = CSVExporter.generateSummary(predictions);
-                console.log('\n📈 Summary Statistics:');
-                console.log('='.repeat(50));
-                console.log(JSON.stringify(summary, null, 2));
-                console.log('='.repeat(50));
-            } catch (error) {
-                errorCount++;
-                console.warn('⚠️  Failed to generate summary:', error);
-            }
+            // try {
+            //     // Print summary (all predictions)
+            //     const summary = CSVExporter.generateSummary(predictions);
+            //     console.log('\n📈 Summary Statistics:');
+            //     console.log('='.repeat(50));
+            //     console.log(JSON.stringify(summary, null, 2));
+            //     console.log('='.repeat(50));
+            // } catch (error) {
+            //     errorCount++;
+            //     console.warn('⚠️  Failed to generate summary:', error);
+            // }
 
             try {
                 // Generate simplified report using SimplifiedReporter
@@ -163,6 +163,15 @@ export class PredictionScheduler {
                     };
                 });
 
+                // 添加查询的处理
+                try {
+                    console.log('\n🔍 Executing symbol frequency analysis query...');
+                    await this.executeSymbolFrequencyAnalysis();
+                } catch (error) {
+                    errorCount++;
+                    console.warn('⚠️  Failed to execute symbol frequency analysis:', error);
+                }
+                
                 // Generate Markdown report
                 const markdownReport = SimplifiedReporter.generateMarkdownReport(summaryData);
                 console.log('\n' + markdownReport);
@@ -214,6 +223,66 @@ export class PredictionScheduler {
             // Log execution status for monitoring
             const status = executionSuccess ? '✅ SUCCESS' : '❌ FAILED';
             console.log(`[Execution Status] ${status} - Execution #${this.executionCount}`);
+        }
+    }
+
+    /**
+     * Execute symbol frequency analysis query
+     * This query gets the top 800 most recent records, groups by symbol,
+     * and calculates average volume and open interest values
+     */
+    private async executeSymbolFrequencyAnalysis(): Promise<void> {
+        // Initialize database handler
+        await this.dbHandler.initialize();
+        
+        try {
+            // Execute the SQL query for symbol frequency analysis
+            const query = `
+                WITH recent_records AS (
+                    SELECT 
+                        symbol,
+                        volume_24h,
+                        open_interest_value,
+                        timestamp
+                    FROM predictions 
+                    ORDER BY timestamp DESC 
+                    LIMIT 800
+                )
+                SELECT 
+                    symbol,
+                    COUNT(*) as occurrence_count,
+                    AVG(volume_24h) as avg_volume_24h,
+                    AVG(open_interest_value) as avg_open_interest_value
+                FROM recent_records
+                GROUP BY symbol
+                ORDER BY occurrence_count DESC, avg_open_interest_value DESC
+            `;
+            
+            const results = await this.dbHandler.queryPredictions(query);
+            
+            // Print results to console
+            console.log('\n📈 Symbol Frequency Analysis Results:');
+            console.log('='.repeat(80));
+            console.log('| Symbol      | Count | Avg Volume 24h | Avg Open Interest Value |');
+            console.log('|-------------|-------|----------------|-------------------------|');
+            
+            for (const row of results) {
+                // Convert to millions (M) for better readability
+                const avgVolumeInM = row.avg_volume_24h / 1000000;
+                const avgOIValueInM = row.avg_open_interest_value / 1000000;
+                
+                console.log(`| ${row.symbol.padEnd(11)} | ${row.occurrence_count.toString().padEnd(5)} | ${(avgVolumeInM.toFixed(2) + 'M').padEnd(14)} | ${(avgOIValueInM.toFixed(2) + 'M').padEnd(23)} |`);
+            }
+            
+            console.log('='.repeat(80));
+            console.log(`Total symbols analyzed: ${results.length}`);
+            
+        } catch (error) {
+            console.error('Failed to execute symbol frequency analysis:', error);
+            throw error;
+        } finally {
+            // Close database connection
+            await this.dbHandler.close();
         }
     }
 

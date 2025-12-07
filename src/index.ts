@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
-import * as dotenv from 'dotenv';
+
 import { PredictionScheduler } from './scheduler/predictionScheduler';
 import { BinanceClient } from './binance/client';
 
+import * as dotenv from 'dotenv';
 dotenv.config();
+
 async function main() {
   console.log('🚀 Starting AI Trader with Market Prediction Scheduler');
 
