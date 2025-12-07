@@ -6,6 +6,7 @@ import { CSVExporter } from '../storage/csvExporter';
 import { BinanceClient } from '../binance/client';
 import { PredictionConfig } from '../prediction/types';
 import { SimplifiedReporter, SimplifiedSummary } from '../analysis/simplifiedReporter';
+import { FileManager } from '../storage/fileManager'; // 添加这一行导入
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -13,6 +14,7 @@ import * as path from 'path';
 export class PredictionScheduler {
     private cronJob: CronJob | null = null; // Cron定时任务
     private marketPredictor: MarketPredictor; // 市场预测器实例
+    private fileManager: FileManager; // 添加FileManager实例
     private isRunning: boolean = false; // 当前是否有预测在运行
     private executionCount: number = 0; // 执行次数计数器
 
@@ -26,6 +28,7 @@ export class PredictionScheduler {
             config,
             deepSeekApiKey
         );
+        this.fileManager = new FileManager(); // 初始化FileManager
     }
 
     /**
@@ -161,18 +164,17 @@ export class PredictionScheduler {
                 const markdownReport = SimplifiedReporter.generateMarkdownReport(summaryData);
                 console.log('\n' + markdownReport);
 
-                // Save Markdown report to file
+                // Save Markdown report to file using append mode
                 const beijingDateForFile = new Date(Date.now() + 8 * 60 * 60 * 1000);
                 const dateStr = beijingDateForFile.toISOString().split('T')[0];
                 const reportDir = './reports';
-                if (!fs.existsSync(reportDir)) {
-                    fs.mkdirSync(reportDir, { recursive: true });
-                }
                 const reportPath = path.join(reportDir, `trading_report_${dateStr}.md`);
-                fs.writeFileSync(reportPath, markdownReport);
-                console.log(`\n💾 Markdown report saved to: ${reportPath}`);
+                
+                // 使用追加模式保存报告
+                await this.fileManager.appendToFileWithTimestamp(reportPath, markdownReport);
+                console.log(`\n💾 Markdown report appended to: ${reportPath}`);
 
-                // Generate and save JSON report
+                // Generate and save JSON report (仍然使用覆盖模式，因为JSON不适合追加)
                 const jsonReport = SimplifiedReporter.generateJSONReport(summaryData);
                 const jsonReportPath = path.join(reportDir, `trading_report_${dateStr}.json`);
                 fs.writeFileSync(jsonReportPath, jsonReport);
