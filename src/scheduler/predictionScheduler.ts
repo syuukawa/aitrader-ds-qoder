@@ -6,7 +6,8 @@ import { CSVExporter } from '../storage/csvExporter';
 import { BinanceClient } from '../binance/client';
 import { PredictionConfig } from '../prediction/types';
 import { SimplifiedReporter, SimplifiedSummary } from '../analysis/simplifiedReporter';
-import { FileManager } from '../storage/fileManager'; // 添加这一行导入
+import { FileManager } from '../storage/fileManager';
+import { PredictionDbHandler } from '../duckdb/predictionDbHandler';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -14,7 +15,8 @@ import * as path from 'path';
 export class PredictionScheduler {
     private cronJob: CronJob | null = null; // Cron定时任务
     private marketPredictor: MarketPredictor; // 市场预测器实例
-    private fileManager: FileManager; // 添加FileManager实例
+    private fileManager: FileManager; // 文件管理器实例
+    private dbHandler: PredictionDbHandler; // DuckDB处理器实例
     private isRunning: boolean = false; // 当前是否有预测在运行
     private executionCount: number = 0; // 执行次数计数器
 
@@ -28,7 +30,8 @@ export class PredictionScheduler {
             config,
             deepSeekApiKey
         );
-        this.fileManager = new FileManager(); // 初始化FileManager
+        this.fileManager = new FileManager();
+        this.dbHandler = new PredictionDbHandler(); // 初始化DuckDB处理器
     }
 
     /**
@@ -179,6 +182,13 @@ export class PredictionScheduler {
                 const jsonReportPath = path.join(reportDir, `trading_report_${dateStr}.json`);
                 fs.writeFileSync(jsonReportPath, jsonReport);
                 console.log(`💾 JSON report saved to: ${jsonReportPath}`);
+
+                // Export to DuckDB (all predictions)
+                console.log('\n📊 Exporting results to DuckDB...');
+                await this.dbHandler.initialize();
+                await this.dbHandler.insertPredictions(predictions);
+                await this.dbHandler.close();
+                console.log('✅ DuckDB export completed');
             } catch (error) {
                 errorCount++;
                 console.warn('⚠️  Failed to generate or save report:', error);

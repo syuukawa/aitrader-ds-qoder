@@ -10,6 +10,8 @@
     "test": "jest",
     "test:unit": "ts-node src/test/test.ts",
     "test:csv": "ts-node src/test/csvExporterTest.ts",
+    "test:duckdb": "ts-node src/test/duckdbTest.ts",
+    "test:simple-duckdb": "ts-node src/test/simpleDuckdbTest.ts",
     "lint": "eslint src/**/*.ts",
     "postinstall": "npm run build"
   },
@@ -17,6 +19,7 @@
     "axios": "^1.6.0",
     "cron": "^3.1.6",
     "dotenv": "^16.3.1",
+    "duckdb": "^1.4.2",
     "undici": "^5.29.0"
   },
   "devDependencies": {
