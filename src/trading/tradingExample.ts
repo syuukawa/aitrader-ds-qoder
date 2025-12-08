@@ -122,44 +122,44 @@ export class TradingStrategy {
         }
     }
 
-    /**
-     * 创建追踪止损单
-     */
-    async createTrailingStop(symbol: string, quantity: number, callbackRate: number): Promise<void> {
-        try {
-            console.log(`🚀 Creating trailing stop for ${symbol}`);
+    // /**
+    //  * 创建追踪止损单
+    //  */
+    // async createTrailingStop(symbol: string, quantity: number, callbackRate: number): Promise<void> {
+    //     try {
+    //         console.log(`🚀 Creating trailing stop for ${symbol}`);
             
-            // 创建追踪止损市价单
-            const trailingStopOrder = await this.orderManager.createOrder({
-                symbol,
-                side: OrderSide.SELL,
-                type: OrderType.TRAILING_STOP_MARKET,
-                quantity,
-                callbackRate,
-                reduceOnly: true
-            });
+    //         // 创建追踪止损市价单
+    //         const trailingStopOrder = await this.orderManager.createOrder({
+    //             symbol,
+    //             side: OrderSide.SELL,
+    //             type: OrderType.TRAILING_STOP_MARKET,
+    //             quantity,
+    //             callbackRate,
+    //             reduceOnly: true
+    //         });
             
-            console.log(`✅ Trailing stop order created: ${trailingStopOrder.orderId}`);
-        } catch (error) {
-            console.error(`❌ Error creating trailing stop for ${symbol}:`, error);
-        }
-    }
+    //         console.log(`✅ Trailing stop order created: ${trailingStopOrder.orderId}`);
+    //     } catch (error) {
+    //         console.error(`❌ Error creating trailing stop for ${symbol}:`, error);
+    //     }
+    // }
 
-    /**
-     * 取消所有订单
-     */
-    async cancelAllOrders(symbol: string): Promise<void> {
-        try {
-            console.log(`🗑️  Cancelling all orders for ${symbol}`);
+    // /**
+    //  * 取消所有订单
+    //  */
+    // async cancelAllOrders(symbol: string): Promise<void> {
+    //     try {
+    //         console.log(`🗑️  Cancelling all orders for ${symbol}`);
             
-            // 注意：这需要调用Binance的批量撤单接口
-            // 在此示例中，我们只演示单个订单的取消
+    //         // 注意：这需要调用Binance的批量撤单接口
+    //         // 在此示例中，我们只演示单个订单的取消
             
-            console.log(`⚠️  Batch cancel not implemented in this example`);
-        } catch (error) {
-            console.error(`❌ Error cancelling orders for ${symbol}:`, error);
-        }
-    }
+    //         console.log(`⚠️  Batch cancel not implemented in this example`);
+    //     } catch (error) {
+    //         console.error(`❌ Error cancelling orders for ${symbol}:`, error);
+    //     }
+    // }
 }
 
 /**

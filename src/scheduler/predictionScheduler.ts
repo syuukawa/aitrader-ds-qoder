@@ -10,6 +10,7 @@ import { FileManager } from '../storage/fileManager';
 import { PredictionDbHandler } from '../duckdb/predictionDbHandler';
 import * as fs from 'fs';
 import * as path from 'path';
+import { TradingStrategy } from '@/trading/tradingExample';
 
 // 预测调度器类
 export class PredictionScheduler {
@@ -43,11 +44,11 @@ export class PredictionScheduler {
             return;
         }
 
-        console.log('🕐 Starting prediction scheduler (every 5 minutes)');
+        console.log('🕐 Starting prediction scheduler (every 15 minutes)');
         console.log('⏰ Next execution: ' + this.getNextExecutionTime());
 
         // Create cron job that runs every  minutes
-        this.cronJob = new CronJob('0 */5 * * * *', async () => {
+        this.cronJob = new CronJob('0 */6 * * * *', async () => {
             await this.executePrediction();
         });
 
@@ -163,6 +164,59 @@ export class PredictionScheduler {
                     };
                 });
 
+                // try {
+                //     // 2025-12-07 添加交易处理 TODO:
+                //     console.log('\n TRADES Executing trades analysis query...');
+                //     // 从环境变量获取API密钥
+                //     const apiKey = process.env.BINANCE_API_KEY || '';
+                //     const apiSecret = process.env.BINANCE_API_SECRET || '';
+                    
+                //     if (!apiKey || !apiSecret) {
+                //         console.log('⚠️  Please set BINANCE_API_KEY and BINANCE_API_SECRET environment variables');
+                //         return;
+                //     }
+                    
+                //     const strategy = new TradingStrategy(apiKey, apiSecret);
+                    
+                //     // Filter predictions for high-confidence buy signals with upward OI trend
+                //     const highConfidenceBuys = predictions.filter(p => 
+                //         (p.prediction === 'BUY' || p.prediction === 'STRONG_BUY') &&
+                //         (p.confidence || 0) > 80 &&
+                //         p.technicalIndicators?.openInterestTrend?.trend === 'UP'
+                //     );
+                    
+                //     if (highConfidenceBuys.length > 0) {
+                //         console.log(`\n📈 Found ${highConfidenceBuys.length} high-confidence buy opportunities:`);
+                //         for (const prediction of highConfidenceBuys) {
+                //             console.log(`- ${prediction.symbol}: ${prediction.prediction} (${prediction.confidence}%) with OI trend ${prediction.technicalIndicators?.openInterestTrend?.trend}`);
+                            
+                //             // 示例：执行买入策略 (使用符合精度要求的数量)
+                //             // 根据价格计算数量: 100/价格 = 数量，保留1位小数
+                //             const targetAmount = 100;
+                //             const baseQuantity = targetAmount / (prediction.currentPrice);
+                //             // 保留1位小数 (向下取整)
+                //             const quantity = Math.floor(baseQuantity * 10) / 10;
+                //             const price = prediction.currentPrice;
+                            
+                //             // 确保最小数量为0.1
+                //             const finalQuantity = Math.max(0.1, quantity);
+                            
+                //             try {
+                //                 await strategy.executeBuyStrategy(prediction.symbol, finalQuantity, price);
+                //                 console.log(`✅ Trade executed for ${prediction.symbol} with quantity ${finalQuantity}`);
+                //             } catch (tradeError) {
+                //                 console.warn(`⚠️  Failed to execute trade for ${prediction.symbol}:`, tradeError);
+                //             }
+                //         }
+                //     } else {
+                //         console.log('\n🔍 No high-confidence buy opportunities found matching criteria');
+                //     }
+                    
+                // } catch (error) {
+                //     errorCount++;
+                //     console.warn('⚠️  Failed to execute trades analysis:', error);
+                // }
+                
                 // 添加查询的处理
                 try {
                     console.log('\n🔍 Executing symbol frequency analysis query...');
