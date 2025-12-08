@@ -40,6 +40,15 @@ export class DuckDBHandler {
                 duckdb.OPEN_READONLY : 
                 duckdb.OPEN_READWRITE | duckdb.OPEN_CREATE;
 
+            // Close any existing connections first
+            if (this.db) {
+                try {
+                    await this.close();
+                } catch (error) {
+                    console.warn('Warning: Failed to close existing connection:', error);
+                }
+            }
+
             this.db = new duckdb.Database(dbPath, readOnlyFlag);
             this.connection = this.db.connect();
             this.isConnected = true;
@@ -47,6 +56,12 @@ export class DuckDBHandler {
             console.log(`DuckDB connected successfully to: ${dbPath}`);
         } catch (error) {
             console.error('Failed to initialize DuckDB:', error);
+            // Clean up on failure
+            try {
+                await this.close();
+            } catch (closeError) {
+                console.warn('Warning: Failed to clean up after initialization failure:', closeError);
+            }
             throw error;
         }
     }
@@ -63,32 +78,55 @@ export class DuckDBHandler {
             }
 
             const result = await new Promise<any[]>((resolve, reject) => {
-                this.connection!.all(query, ...params, (err, rows) => {
+                if (!this.connection) {
+                    reject(new Error('Connection lost'));
+                    return;
+                }
+                
+                this.connection.all(query, ...params, (err, rows) => {
                     if (err) reject(err);
                     else resolve(rows);
                 });
             });
             
             return result;
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to execute custom query:', error);
+            // If the connection is broken, try to reconnect
+            if (error.message && (error.message.includes('Connection') || error.message.includes('connection'))) {
+                console.log('Attempting to reconnect to database...');
+                try {
+                    await this.initialize();
+                } catch (reconnectError) {
+                    console.error('Failed to reconnect:', reconnectError);
+                }
+            }
             throw error;
         }
     }
 
     async close(): Promise<void> {
-        if (this.connection) {
-            this.connection.close();
+        try {
+            if (this.connection) {
+                this.connection.close();
+                this.connection = null;
+            }
+            
+            if (this.db) {
+                this.db.close();
+                this.db = null;
+            }
+            
+            this.isConnected = false;
+            console.log('DuckDB connection closed');
+        } catch (error: any) {
+            console.error('Error closing DuckDB connection:', error);
+            // Still mark as disconnected to prevent further attempts
             this.connection = null;
-        }
-        
-        if (this.db) {
-            this.db.close();
             this.db = null;
+            this.isConnected = false;
+            throw error;
         }
-        
-        this.isConnected = false;
-        console.log('DuckDB connection closed');
     }
 
     getIsConnected(): boolean {

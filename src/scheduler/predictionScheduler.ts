@@ -48,7 +48,7 @@ export class PredictionScheduler {
         console.log('⏰ Next execution: ' + this.getNextExecutionTime());
 
         // Create cron job that runs every  minutes
-        this.cronJob = new CronJob('0 */6 * * * *', async () => {
+        this.cronJob = new CronJob('0 */15 * * * *', async () => {
             await this.executePrediction();
         });
 
@@ -248,9 +248,20 @@ export class PredictionScheduler {
 
                 // Export to DuckDB (all predictions)
                 console.log('\n📊 Exporting results to DuckDB...');
-                await this.dbHandler.initialize();
-                await this.dbHandler.insertPredictions(predictions);
-                await this.dbHandler.close();
+                try {
+                    await this.dbHandler.initialize();
+                    await this.dbHandler.insertPredictions(predictions);
+                } catch (dbError) {
+                    console.error('❌ Database operation failed:', dbError);
+                    errorCount++;
+                } finally {
+                    try {
+                        await this.dbHandler.close();
+                    } catch (closeError) {
+                        console.error('❌ Error closing database connection:', closeError);
+                        errorCount++;
+                    }
+                }
                 console.log('✅ DuckDB export completed');
             } catch (error) {
                 errorCount++;
@@ -286,10 +297,10 @@ export class PredictionScheduler {
      * and calculates average volume and open interest values
      */
     private async executeSymbolFrequencyAnalysis(): Promise<void> {
-        // Initialize database handler
-        await this.dbHandler.initialize();
-        
         try {
+            // Initialize database handler
+            await this.dbHandler.initialize();
+            
             // Execute the SQL query for symbol frequency analysis
             const query = `
                 WITH recent_records AS (
@@ -336,7 +347,11 @@ export class PredictionScheduler {
             throw error;
         } finally {
             // Close database connection
-            await this.dbHandler.close();
+            try {
+                await this.dbHandler.close();
+            } catch (closeError) {
+                console.error('Error closing database connection:', closeError);
+            }
         }
     }
 
