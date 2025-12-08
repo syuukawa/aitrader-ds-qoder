@@ -112,6 +112,9 @@ export class MarketPredictor {
             // 第3&4步: 获取K线数据并计算指标
             const predictedSymbols: PredictedSymbol[] = [];
 
+            // 用于存储需要DeepSeek分析的交易对
+            const symbolsForDeepSeekAnalysis: { symbol: string; indicators: any; predictedSymbol: PredictedSymbol }[] = [];
+
             // 使用并发处理以提高效率
             const maxConcurrentWorkers = 5; // 限制并发工作线程数，防止资源耗尽
             const batchSize = Math.ceil(filteredSymbols.length / maxConcurrentWorkers);
@@ -130,6 +133,16 @@ export class MarketPredictor {
                     const result = await this.processSymbol(symbolData);
                     if (result) {
                         predictedSymbols.push(result);
+                        
+                        // 如果启用了DeepSeek分析且信号为BUY或STRONG_BUY，则加入待分析列表
+                        if (this.config.deepSeekEnabled && this.deepSeekApiKey && 
+                            (result.prediction === 'BUY' || result.prediction === 'STRONG_BUY')) {
+                            symbolsForDeepSeekAnalysis.push({
+                                symbol: result.symbol,
+                                indicators: result.technicalIndicators,
+                                predictedSymbol: result
+                            });
+                        }
                     }
                 }
 
@@ -137,6 +150,11 @@ export class MarketPredictor {
                 if (i + batchSize < filteredSymbols.length) {
                     await this.delay(500);
                 }
+            }
+
+            // 批量处理DeepSeek分析（如果启用）
+            if (this.config.deepSeekEnabled && this.deepSeekApiKey && symbolsForDeepSeekAnalysis.length > 0) {
+                await this.processBatchDeepSeekAnalysis(symbolsForDeepSeekAnalysis);
             }
 
             // 排序: 先按24小时涨幅倒序，再按成交量倒序
@@ -153,6 +171,73 @@ export class MarketPredictor {
         } catch (error) {
             console.error('Error in market prediction:', error);
             throw error;
+        }
+    }
+
+    /**
+     * 批量处理DeepSeek分析
+     */
+    private async processBatchDeepSeekAnalysis(symbolsForAnalysis: { symbol: string; indicators: any; predictedSymbol: PredictedSymbol }[]): Promise<void> {
+        if (!this.deepSeekAnalyzer) {
+            console.warn('⚠️  DeepSeek分析器未初始化，跳过AI分析');
+            return;
+        }
+
+        try {
+            console.log(`🧠 开始批量DeepSeek分析 ${symbolsForAnalysis.length} 个交易对...`);
+            
+            // 准备批量分析数据
+            const symbolIndicators = symbolsForAnalysis.map(item => ({
+                symbol: item.symbol,
+                indicators: {
+                    currentPrice: item.indicators.currentPrice || 0,
+                    macd: item.indicators.macd,
+                    volume: item.indicators.volume,
+                    rsi: item.indicators.rsi,
+                    ma: item.indicators.ma,
+                    bollingerBands: item.indicators.bollingerBands,
+                    priceData: item.indicators.priceData,
+                    openInterestTrend: item.indicators.openInterestTrend
+                }
+            }));
+
+            // 执行批量分析
+            const batchResults = await this.deepSeekAnalyzer.analyzeTrendBatch(symbolIndicators);
+
+            // 更新预测结果
+            for (const item of symbolsForAnalysis) {
+                const result = batchResults[item.symbol];
+                if (result) {
+                    try {
+                        // 从分析结果中提取交易信号
+                        const signal = this.extractSignalFromAnalysis(result.analysis);
+                        const confidence = this.extractConfidenceFromAnalysis(result.analysis, item.indicators);
+                        
+                        // 使用DeepSeek的分析结果覆盖本地分析
+                        item.predictedSymbol.prediction = signal;
+                        item.predictedSymbol.confidence = confidence;
+                        
+                        console.log(`✅ ${item.symbol} - DeepSeek批量分析完成: ${signal} (置信度: ${confidence.toFixed(1)}%)`);
+                    } catch (parseError) {
+                        console.warn(`⚠️  解析 ${item.symbol} 的DeepSeek分析结果失败:`, parseError);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('❌ 批量DeepSeek分析失败:', error);
+            // 如果批量分析失败，回退到逐个分析
+            for (const item of symbolsForAnalysis) {
+                try {
+                    const analysis = await this.getDeepSeekAnalysis(item.indicators, item.symbol);
+                    // 使用DeepSeek的分析结果覆盖本地分析(如果成功)
+                    if (analysis.prediction) {
+                        item.predictedSymbol.prediction = analysis.prediction;
+                        item.predictedSymbol.confidence = analysis.confidence;
+                    }
+                } catch (singleError) {
+                    console.warn(`⚠️  获取 ${item.symbol} 的DeepSeek分析失败，使用本地分析:`, singleError instanceof Error ? singleError.message : String(singleError));
+                }
+            }
         }
     }
 
@@ -596,7 +681,15 @@ export class MarketPredictor {
                 bearishScore += 1.5;  // 上涨无量 = 陷阱信号
                 scoreDetails.push('VOL背离: 上涨无量 🔴 (-1.5) 危险!');
             }
-            // ... existing code ...
+
+            // 成交量趋势
+            if (volumeTrend === 'UP') {
+                bullishScore += 1;
+                scoreDetails.push('VOL: 成交量上升(+1)');
+            } else if (volumeTrend === 'DOWN') {
+                bearishScore += 1;
+                scoreDetails.push('VOL: 成交量下降(-1)');
+            }
         }
 
         // ========== KDJ随机指标分析 (权重: 1) ==========
@@ -668,62 +761,6 @@ export class MarketPredictor {
             }
         }
 
-        // ========== KDJ随机指标分析 (权重: 1) ==========
-        if (indicators.kdj) {
-            const { k, d, j } = indicators.kdj;
-            let kdjScore = 0;
-
-            // KDJ金叉
-            if (k > d && k <= 50) {
-                kdjScore += 1;  // 低位金叉，看涨
-                scoreDetails.push(`KDJ: 低位金叉 K=${k.toFixed(1)} (+1)`);
-            } else if (k > d && k > 50) {
-                kdjScore += 0.5;  // 金叉但在高低，要警惕
-                scoreDetails.push(`KDJ: 高位金叉 K=${k.toFixed(1)} (+0.5)`);
-            }
-
-            // KDJ死叉
-            if (k < d && k >= 50) {
-                kdjScore -= 1;  // 高位死叉，看跌
-                scoreDetails.push(`KDJ: 高位死叉 K=${k.toFixed(1)} (-1)`);
-            } else if (k < d && k < 50) {
-                kdjScore -= 0.5;  // 死叉但在低位，反弹可能
-                scoreDetails.push(`KDJ: 低位死叉 K=${k.toFixed(1)} (-0.5)`);
-            }
-
-            // KDJ极端位置
-            if (k > 80) {
-                kdjScore -= 1;  // 超买
-                scoreDetails.push(`KDJ: 超买区 K=${k.toFixed(1)} (-1)`);
-            } else if (k < 20) {
-                kdjScore += 1;  // 超卖
-                scoreDetails.push(`KDJ: 超卖区 K=${k.toFixed(1)} (+1)`);
-            }
-
-            bullishScore += Math.max(0, kdjScore);
-            if (kdjScore < 0) bearishScore += Math.abs(kdjScore);
-        }
-
-        // ========== 威廉指标分析 (权重: 0.5) ==========
-        if (indicators.williamsR) {
-            const { williamsr } = indicators.williamsR;
-            let williamsScore = 0;
-
-            // 威廉指标范围: -100到0
-            // > -20: 超买
-            // < -80: 超卖
-            if (williamsr > -20) {
-                williamsScore -= 0.5;  // 超买
-                scoreDetails.push(`Williams: 超买 R=${williamsr.toFixed(1)} (-0.5)`);
-            } else if (williamsr < -80) {
-                williamsScore += 0.5;  // 超卖
-                scoreDetails.push(`Williams: 超卖 R=${williamsr.toFixed(1)} (+0.5)`);
-            }
-
-            bullishScore += Math.max(0, williamsScore);
-            if (williamsScore < 0) bearishScore += Math.abs(williamsScore);
-        }
-
         // ========== OI趋势分析 (权重: 1.5) ==========
         if (indicators.openInterestTrend) {
             const { trend, strength, growthRate } = indicators.openInterestTrend;
@@ -746,19 +783,6 @@ export class MarketPredictor {
 
             bullishScore += Math.max(0, oiScore);
             if (oiScore < 0) bearishScore += Math.abs(oiScore);
-        }
-
-        // ========== K线形态分析 (权重: 1.5) ==========
-        if (indicators.patterns && indicators.patterns.length > 0) {
-            for (const pattern of indicators.patterns) {
-                if (pattern.signal > 0) {
-                    bullishScore += pattern.signal * pattern.confidence;
-                    scoreDetails.push(`形态: ${pattern.pattern} (${(pattern.signal * pattern.confidence).toFixed(1)})`);
-                } else if (pattern.signal < 0) {
-                    bearishScore += Math.abs(pattern.signal) * pattern.confidence;
-                    scoreDetails.push(`形态: ${pattern.pattern} (${(pattern.signal * pattern.confidence).toFixed(1)})`);
-                }
-            }
         }
 
         // ========== 综合评分生成信号 ==========

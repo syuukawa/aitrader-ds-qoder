@@ -72,6 +72,201 @@ export class DeepSeekAnalyzer {
     }
 
     /**
+     * 批量分析多个交易对的趋势
+     * 通过一次API调用分析多个symbols，显著提升性能
+     */
+    async analyzeTrendBatch(symbolIndicators: { symbol: string; indicators: IndicatorAnalysis }[]): Promise<{
+        [symbol: string]: {
+            summary: string;
+            analysis: string;
+            fullReport: string;
+        }
+    }> {
+        try {
+            console.log(`🔄 开始批量分析 ${symbolIndicators.length} 个交易对...`);
+            
+            // 生成批量分析的Prompt
+            const prompt = this.buildBatchAnalysisPrompt(symbolIndicators);
+            
+            // 是否输出Prompt用于调试
+            if (process.env.DEEPSEEK_PROMPT_LOG === 'true') {
+                console.log("📋 DeepSeek批量分析Prompt:", prompt);
+            }
+
+            // 调用DeepSeek API进行批量分析
+            const response = await fetch(this.baseURL, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'deepseek-chat',
+                    messages: [
+                        {
+                            role: 'user',
+                            content: prompt
+                        }
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 2000 // 增加token限制以适应批量分析
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`DeepSeek API错误: ${response.statusText}`);
+            }
+
+            const rawData: unknown = await response.json();
+
+            // 类型检查和数据提取
+            if (
+                typeof rawData === 'object' &&
+                rawData !== null &&
+                'choices' in rawData
+            ) {
+                const data = rawData as DeepSeekResponse;
+                const analysisResult = data.choices[0]?.message?.content || '❌ 批量分析失败';
+                
+                // 解析批量分析结果
+                return this.parseBatchAnalysisResult(analysisResult, symbolIndicators);
+            } else {
+                throw new Error('❌ 无效的DeepSeek API响应结构');
+            }
+        } catch (error) {
+            console.error('❌ DeepSeek批量API调用失败:', error);
+            // 回退到逐个分析
+            const fallbackResults: { [symbol: string]: { summary: string; analysis: string; fullReport: string } } = {};
+            for (const { symbol, indicators } of symbolIndicators) {
+                try {
+                    const result = await this.analyzeTrend(indicators, symbol);
+                    fallbackResults[symbol] = result;
+                } catch (singleError) {
+                    console.error(`❌ 单个分析失败 (${symbol}):`, singleError);
+                    // 生成降级分析
+                    const summary = this.generateSummaryOutput(symbol, indicators);
+                    const analysis = this.getFallbackAnalysis(indicators, symbol);
+                    fallbackResults[symbol] = {
+                        summary,
+                        analysis,
+                        fullReport: summary + '\n\n' + analysis
+                    };
+                }
+            }
+            return fallbackResults;
+        }
+    }
+
+    /**
+     * 构建批量分析的Prompt
+     */
+    private buildBatchAnalysisPrompt(symbolIndicators: { symbol: string; indicators: IndicatorAnalysis }[]): string {
+        let prompt = `
+作为专业的量化交易分析师，请对以下多个加密货币进行批量技术分析：
+
+请为每个交易对提供简洁明了的分析，包括：
+1. 技术信号 (买入/卖出/持有)
+2. 置信度 (0-100%)
+3. 关键支撑/阻力位
+4. 止损建议
+5. 目标价位
+
+以下是各交易对的技术指标：
+`;
+
+        for (const { symbol, indicators } of symbolIndicators) {
+            const { macd, volume, currentPrice, rsi, ma, bollingerBands } = indicators;
+            
+            prompt += `
+---
+## ${symbol}
+- **当前价格**: $${currentPrice.toFixed(8)}
+- **MACD**: ${macd?.macd?.toFixed(6) || 'N/A'} (信号: ${macd?.signal?.toFixed(6) || 'N/A'}, 柱状图: ${macd?.histogram?.toFixed(6) || 'N/A'})
+- **RSI**: ${rsi?.toFixed(2) || 'N/A'}
+- **移动平均线**: MA5: ${ma?.ma5?.toFixed(8) || 'N/A'}, MA20: ${ma?.ma20?.toFixed(8) || 'N/A'}
+- **布林带**: 上轨: $${bollingerBands?.upper?.toFixed(8) || 'N/A'}, 下轨: $${bollingerBands?.lower?.toFixed(8) || 'N/A'}
+- **成交量比率**: ${volume?.volumeRatio?.toFixed(2) || 'N/A'}x
+---
+`;
+        }
+
+        prompt += `
+请按照以下格式为每个交易对提供分析结果：
+
+[SIGNALSEPARATOR]
+${symbolIndicators[0].symbol}
+信号: 买入/卖出/持有
+置信度: XX%
+支撑位: $XX.XXXXXXXX
+阻力位: $XX.XXXXXXXX
+止损建议: $XX.XXXXXXXX
+目标价位: $XX.XXXXXXXX, $XX.XXXXXXXX
+分析要点: [简要说明2-3个关键分析点]
+[ENDOFSIGNAL]
+
+请严格按照上述格式输出每个交易对的分析结果。
+`;
+
+        return prompt;
+    }
+
+    /**
+     * 解析批量分析结果
+     */
+    private parseBatchAnalysisResult(analysisResult: string, symbolIndicators: { symbol: string; indicators: IndicatorAnalysis }[]): {
+        [symbol: string]: {
+            summary: string;
+            analysis: string;
+            fullReport: string;
+        }
+    } {
+        const results: { [symbol: string]: { summary: string; analysis: string; fullReport: string } } = {};
+        
+        // 为每个symbol生成基础summary
+        for (const { symbol, indicators } of symbolIndicators) {
+            const summary = this.generateSummaryOutput(symbol, indicators);
+            results[symbol] = {
+                summary,
+                analysis: '',
+                fullReport: summary
+            };
+        }
+        
+        // 解析分析结果
+        const signalBlocks = analysisResult.split('[SIGNALSEPARATOR]');
+        
+        for (const block of signalBlocks) {
+            if (!block.trim()) continue;
+            
+            const lines = block.trim().split('\n');
+            const symbolLine = lines[0].trim();
+            
+            // 查找对应的symbol
+            const symbolEntry = symbolIndicators.find(si => si.symbol === symbolLine);
+            if (!symbolEntry) continue;
+            
+            const symbol = symbolEntry.symbol;
+            
+            // 提取分析内容
+            const analysisLines = lines.slice(1).filter(line => 
+                line.includes('信号:') || 
+                line.includes('置信度:') || 
+                line.includes('支撑位:') || 
+                line.includes('阻力位:') || 
+                line.includes('止损建议:') || 
+                line.includes('目标价位:') || 
+                line.includes('分析要点:')
+            );
+            
+            const analysis = analysisLines.join('\n');
+            results[symbol].analysis = analysis;
+            results[symbol].fullReport = results[symbol].summary + '\n\n' + analysis;
+        }
+        
+        return results;
+    }
+
+    /**
      * 生成标准化的总结性输出
      */
     private generateSummaryOutput(symbol: string, indicators: IndicatorAnalysis): string {
@@ -308,7 +503,7 @@ ${supportResistance}
 4. **替代方案**：如主方案失效的应急方案
 5. **监控要点**：需要持续监控的关键价位和指标
 
-请用专业、客观、详细的语言给出分析报告，确保投资建议具有可操作性和明确的风险管理框架。
+Please use professional、objective、detailed language to give the analysis report, ensuring the investment advice is actionable and has a clear risk management framework.
         `;
     }
 
@@ -787,7 +982,7 @@ ${this.analyzeVolumeStatus(indicators.volume)}
 
 ${this.analyzeRSIStatus(indicators.rsi)}
 
-**备注**: 本分析基于技术指标自动生成，建议结合其他信息进行综合判断。
+**备注**: 本分析基于技术指标自动生成，建议结合其他信息进行综合判断.
         `;
     }
 
